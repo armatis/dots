@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dots</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #be5504;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        svg {
+            display: block;
+            cursor: crosshair;
+        }
+
+        circle {
+            cursor: grab;
+            transition: r 0.15s ease-out;
+        }
+
+        circle:active {
+            cursor: grabbing;
+        }
+
+        svg.dragging {
+            cursor: grabbing;
+        }
+
+        svg.dragging circle {
+            cursor: grabbing;
+        }
+
+        #controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        #dotCount {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+        }
+
+        #dotCount label {
+            color: #000;
+        }
+
+        #dotCount input[type="range"] {
+            width: 80px;
+            cursor: pointer;
+        }
+
+        #countValue {
+            color: #000;
+            min-width: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        #controls button {
+            padding: 10px 20px;
+            background: transparent;
+            color: #000;
+            border: 1px solid #000;
+            border-radius: 4px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        #controls button:hover {
+            background: #000;
+            color: #be5504;
+        }
+
+        #controls button.active {
+            background: #000;
+            color: #be5504;
+        }
+    </style>
+</head>
+<body>
+    <svg id="canvas"></svg>
+    <div id="controls">
+        <div id="dotCount">
+            <label for="countSlider">Dots:</label>
+            <input type="range" id="countSlider" min="1" max="12" value="1">
+            <span id="countValue">1</span>
+        </div>
+        <button id="gridBtn">Show Grid</button>
+        <button id="clearBtn">Clear All</button>
+    </div>
+
+    <script>
+        // Configuration
+        const DEFAULT_RADIUS = 6;
+        const MIN_RADIUS = 10;
+        const MAX_RADIUS = 200;
+        const HOLD_DURATION = 800;
+        const GRID_SIZE = DEFAULT_RADIUS;
+
+        // State
+        let dots = [];
+        let nextId = 1;
+        let holdTimer = null;
+        let holdDotId = null;
+
+        // Drag state
+        const DRAG_THRESHOLD = 5;
+        let isDragging = false;
+        let dragDot = null;
+        let dragStartPos = null;
+        let dragOriginalPos = null;
+        let dragTargetPos = null;
+        let dragPrevTargetPos = null;
+        let dragAnimationId = null;
+        let dragKnockedDots = new Set(); // Track dots already knocked this drag
+
+        // Velocity tracking for throwing
+        let velocityHistory = [];
+        const VELOCITY_SAMPLES = 5;
+
+        // Physics state for thrown dots
+        const BASE_FRICTION = 0.98;
+        const MIN_VELOCITY = 0.1;
+        let thrownDots = new Map(); // dotId -> { vx, vy }
+        let processedCollisions = new Set(); // Track collisions already handled this frame
+
+        // Setup SVG
+        const svg = d3.select('#canvas')
+            .attr('width', window.innerWidth)
+            .attr('height', window.innerHeight);
+
+        // Background rect for click handling
+        const background = svg.append('rect')
+            .attr('width', window.innerWidth)
+            .attr('height', window.innerHeight)
+            .attr('fill', '#be5504');
+
+        // Grid group (hidden by default)
+        const gridGroup = svg.append('g')
+            .attr('class', 'grid')
+            .style('display', 'none');
+
+        // Draw grid
+        function drawGrid() {
+            gridGroup.selectAll('*').remove();
+
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // Vertical lines
+            for (let x = 0; x <= width; x += GRID_SIZE) {
+                gridGroup.append('line')
+                    .attr('x1', x)
+                    .attr('y1', 0)
+                    .attr('x2', x)
+                    .attr('y2', height)
+                    .attr('stroke', 'rgba(0,0,0,0.2)')
+                    .attr('stroke-width', 0.5);
+            }
+
+            // Horizontal lines
+            for (let y = 0; y <= height; y += GRID_SIZE) {
+                gridGroup.append('line')
+                    .attr('x1', 0)
+                    .attr('y1', y)
+                    .attr('x2', width)
+                    .attr('y2', y)
+                    .attr('stroke', 'rgba(0,0,0,0.2)')
+                    .attr('stroke-width', 0.5);
+            }
+        }
+
+        drawGrid();
+
+        // Group for dots
+        const dotsGroup = svg.append('g');
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            svg.attr('width', window.innerWidth).attr('height', window.innerHeight);
+            background.attr('width', window.innerWidth).attr('height', window.innerHeight);
+            drawGrid();
+        });
+
+        // Utility functions
+        const snapToGrid = (x, y) => ({
+            x: Math.round(x / GRID_SIZE) * GRID_SIZE,
+            y: Math.round(y / GRID_SIZE) * GRID_SIZE
+        });
+
+        const STROKE_WIDTH = 1.5;
+
+        const wouldOverlap = (x, y, radius, excludeId = null) => {
+            return dots.some(dot => {
+                if (dot.id === excludeId) return false;
+                const dx = dot.x - x;
+                const dy = dot.y - y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                // Dots overlap if distance is less than sum of radii (allow strokes to touch/overlap)
+                return distance < radius + dot.radius;
+            });
+        };
+
+        const findPlacementPosition = (clickX, clickY, newRadius) => {
+            if (dots.length === 0) {
+                return snapToGrid(clickX, clickY);
+            }
+
+            let nearestDot = null;
+            let nearestDistance = Infinity;
+            for (const dot of dots) {
+                const dx = clickX - dot.x;
+                const dy = clickY - dot.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < nearestDistance) {
+                    nearestDistance = dist;
+                    nearestDot = dot;
+                }
+            }
+
+            const touchDistance = nearestDot.radius + Math.max(newRadius, nearestDot.radius);
+
+            if (nearestDistance > touchDistance * 2) {
+                return snapToGrid(clickX, clickY);
+            }
+
+            const dx = clickX - nearestDot.x;
+            const dy = clickY - nearestDot.y;
+
+            if (nearestDistance === 0) {
+                return { x: nearestDot.x + touchDistance, y: nearestDot.y };
+            }
+
+            const nx = dx / nearestDistance;
+            const ny = dy / nearestDistance;
+
+            return snapToGrid(
+                nearestDot.x + nx * touchDistance,
+                nearestDot.y + ny * touchDistance
+            );
+        };
+
+        // Render dots using D3 data binding
+        function render() {
+            const circles = dotsGroup.selectAll('circle')
+                .data(dots, d => d.id);
+
+            // Remove old dots
+            circles.exit().remove();
+
+            // Add new dots
+            circles.enter()
+                .append('circle')
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', d => d.radius)
+                .attr('fill', '#fff')
+                .attr('stroke', '#000')
+                .attr('stroke-width', STROKE_WIDTH)
+                .on('mousedown', onDotMouseDown)
+                .on('mouseup', onDotMouseUp)
+                .on('mouseleave', onDotMouseLeave)
+                .on('dblclick', onDotDoubleClick);
+
+            // Update existing dots
+            circles
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', d => d.radius);
+        }
+
+        // Create a new dot (or multiple dots in a cluster)
+        function createDot(x, y) {
+            const count = parseInt(document.getElementById('countSlider').value, 10);
+
+            if (count === 1) {
+                // Single dot - use existing placement logic
+                const placement = findPlacementPosition(x, y, DEFAULT_RADIUS);
+                if (!wouldOverlap(placement.x, placement.y, DEFAULT_RADIUS)) {
+                    dots.push({
+                        id: nextId++,
+                        x: placement.x,
+                        y: placement.y,
+                        radius: DEFAULT_RADIUS
+                    });
+                }
+            } else {
+                // Multiple dots - create in a cluster pattern
+                createDotCluster(x, y, count);
+            }
+            render();
+        }
+
+        // Create multiple dots in a touching cluster
+        function createDotCluster(centerX, centerY, count) {
+            const diameter = DEFAULT_RADIUS * 2;
+            const created = [];
+
+            // Find valid position for center dot
+            const centerPlacement = findPlacementPosition(centerX, centerY, DEFAULT_RADIUS);
+            if (wouldOverlap(centerPlacement.x, centerPlacement.y, DEFAULT_RADIUS)) {
+                return; // Can't place even the first dot
+            }
+
+            // Create center dot
+            const centerDot = {
+                id: nextId++,
+                x: centerPlacement.x,
+                y: centerPlacement.y,
+                radius: DEFAULT_RADIUS
+            };
+            dots.push(centerDot);
+            created.push(centerDot);
+
+            if (count === 1) return;
+
+            // Place remaining dots around the center in a spiral/ring pattern
+            let placed = 1;
+            let ring = 1;
+            let angleOffset = Math.random() * Math.PI * 2; // Random starting angle
+
+            while (placed < count) {
+                // Number of dots that can fit in this ring
+                const dotsInRing = ring === 1 ? 6 : ring * 6;
+                const angleStep = (Math.PI * 2) / dotsInRing;
+
+                for (let i = 0; i < dotsInRing && placed < count; i++) {
+                    const angle = angleOffset + i * angleStep;
+                    const distance = diameter * ring;
+
+                    const testX = centerPlacement.x + Math.cos(angle) * distance;
+                    const testY = centerPlacement.y + Math.sin(angle) * distance;
+
+                    const snapped = snapToGrid(testX, testY);
+
+                    // Check if this position works
+                    if (!wouldOverlap(snapped.x, snapped.y, DEFAULT_RADIUS)) {
+                        const newDot = {
+                            id: nextId++,
+                            x: snapped.x,
+                            y: snapped.y,
+                            radius: DEFAULT_RADIUS
+                        };
+                        dots.push(newDot);
+                        created.push(newDot);
+                        placed++;
+                    }
+                }
+                ring++;
+
+                // Safety limit
+                if (ring > 5) break;
+            }
+        }
+
+        // Grow a dot
+        function growDot(id) {
+            const dot = dots.find(d => d.id === id);
+            if (!dot) return;
+
+            const newRadius = Math.min(dot.radius * 2, MAX_RADIUS);
+            const radiusIncrease = newRadius - dot.radius;
+
+            // If no overlap at current position, just grow
+            if (!wouldOverlap(dot.x, dot.y, newRadius, id)) {
+                dot.radius = newRadius;
+                render();
+                return;
+            }
+
+            // Find dots that would overlap with the new size
+            const overlappingDots = dots.filter(other => {
+                if (other.id === id) return false;
+                const dx = other.x - dot.x;
+                const dy = other.y - dot.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance < newRadius + other.radius;
+            });
+
+            if (overlappingDots.length === 0) return;
+
+            // Calculate shift direction (away from overlapping dots)
+            let shiftX = 0;
+            let shiftY = 0;
+            for (const other of overlappingDots) {
+                const dx = dot.x - other.x;
+                const dy = dot.y - other.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 0) {
+                    shiftX += dx / dist;
+                    shiftY += dy / dist;
+                }
+            }
+
+            // Normalize shift direction
+            const shiftMag = Math.sqrt(shiftX * shiftX + shiftY * shiftY);
+            if (shiftMag === 0) return;
+            shiftX /= shiftMag;
+            shiftY /= shiftMag;
+
+            // Calculate how much to shift (need to move by the radius increase)
+            const newX = dot.x + shiftX * radiusIncrease;
+            const newY = dot.y + shiftY * radiusIncrease;
+
+            // Check if new position is valid
+            if (!wouldOverlap(newX, newY, newRadius, id)) {
+                dot.x = newX;
+                dot.y = newY;
+                dot.radius = newRadius;
+                render();
+            }
+            // If still overlaps, not enough space - don't grow
+        }
+
+        // Shrink a dot
+        function shrinkDot(id) {
+            const dot = dots.find(d => d.id === id);
+            if (!dot) return;
+
+            const newRadius = dot.radius / 2;
+            if (newRadius < MIN_RADIUS) {
+                dots = dots.filter(d => d.id !== id);
+            } else {
+                dot.radius = newRadius;
+            }
+            render();
+        }
+
+        // Clear hold timer
+        function clearHoldTimer() {
+            if (holdTimer) {
+                clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+            holdDotId = null;
+        }
+
+        // Dot event handlers
+        function onDotMouseDown(event, d) {
+            event.stopPropagation();
+            holdDotId = d.id;
+
+            // Track drag start position
+            const [mx, my] = d3.pointer(event, svg.node());
+            dragStartPos = { x: mx, y: my };
+            dragOriginalPos = { x: d.x, y: d.y };
+            dragDot = d;
+            isDragging = false;
+
+            holdTimer = setTimeout(() => {
+                if (holdDotId === d.id && !isDragging) {
+                    shrinkDot(d.id);
+                }
+                clearHoldTimer();
+            }, HOLD_DURATION);
+        }
+
+        function onDotMouseUp(event, d) {
+            event.stopPropagation();
+            finalizeDrag();
+            clearHoldTimer();
+        }
+
+        function onDotMouseLeave(event, d) {
+            // Don't clear if we're dragging (mouse will leave the dot)
+            if (!isDragging) {
+                clearHoldTimer();
+            }
+        }
+
+        function onDotDoubleClick(event, d) {
+            event.stopPropagation();
+            event.preventDefault();
+            clearHoldTimer();
+
+            // If dot is moving, stop it instead of growing
+            if (thrownDots.has(d.id)) {
+                thrownDots.delete(d.id);
+                // Snap to grid when stopped
+                const snapped = snapToGrid(d.x, d.y);
+                if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
+                    d.x = snapped.x;
+                    d.y = snapped.y;
+                }
+                render();
+                return;
+            }
+
+            growDot(d.id);
+        }
+
+        // Animation loop for weighted dragging
+        function animateDrag() {
+            if (!isDragging || !dragDot || !dragTargetPos) {
+                dragAnimationId = null;
+                return;
+            }
+
+            const prevX = dragDot.x;
+            const prevY = dragDot.y;
+
+            // Weight based on size - larger dots are heavier
+            const weight = dragDot.radius / DEFAULT_RADIUS;
+            let responsiveness = Math.min(1, 0.3 / Math.sqrt(weight));
+
+            // Interpolate toward target
+            let newX = dragDot.x + (dragTargetPos.x - dragDot.x) * responsiveness;
+            let newY = dragDot.y + (dragTargetPos.y - dragDot.y) * responsiveness;
+
+            // Calculate mouse/target velocity (the actual user input force)
+            let mouseVx = 0, mouseVy = 0;
+            if (dragPrevTargetPos) {
+                mouseVx = dragTargetPos.x - dragPrevTargetPos.x;
+                mouseVy = dragTargetPos.y - dragPrevTargetPos.y;
+            }
+
+            // For collisions, use the mouse velocity (user's intent) not the dampened dot movement
+            // Scale by weight - heavier dots transfer more momentum
+            const collisionVx = mouseVx;
+            const collisionVy = mouseVy;
+            const dragSpeed = Math.sqrt(collisionVx * collisionVx + collisionVy * collisionVy);
+
+            // Check collision with each other dot
+            for (const other of dots) {
+                if (other.id === dragDot.id) continue;
+
+                const odx = newX - other.x;
+                const ody = newY - other.y;
+                const dist = Math.sqrt(odx * odx + ody * ody);
+                const minDist = dragDot.radius + other.radius;
+
+                // If we've moved away from a previously knocked dot, allow knocking again
+                if (dist > minDist * 1.5 && dragKnockedDots.has(other.id)) {
+                    dragKnockedDots.delete(other.id);
+                }
+
+                if (dist < minDist && dist > 0) {
+                    // Collision normal (from other to dragged dot)
+                    const nx = odx / dist;
+                    const ny = ody / dist;
+
+                    // Calculate masses (same as thrown physics)
+                    const m1 = dragDot.radius;
+                    const m2 = other.radius;
+                    const totalMass = m1 + m2;
+
+                    // Get other dot's current velocity
+                    let otherPhysics = thrownDots.get(other.id);
+                    const otherVx = otherPhysics ? otherPhysics.vx : 0;
+                    const otherVy = otherPhysics ? otherPhysics.vy : 0;
+
+                    // Relative velocity (collision velocity vs other's velocity)
+                    const relVx = collisionVx - otherVx;
+                    const relVy = collisionVy - otherVy;
+                    const dvn = -(relVx * nx + relVy * ny);
+
+                    // Only process if moving toward each other and haven't knocked yet
+                    if (dvn > 0.1 && !dragKnockedDots.has(other.id)) {
+                        dragKnockedDots.add(other.id);
+
+                        // Use same elastic collision formula as thrown dots
+                        const restitution = 0.85;
+                        const coeffOther = (2 * m1 / totalMass) * dvn * (1 + restitution) / 2;
+
+                        // Knock the other dot
+                        const knockVx = coeffOther * nx;
+                        const knockVy = coeffOther * ny;
+
+                        if (otherPhysics) {
+                            otherPhysics.vx += knockVx;
+                            otherPhysics.vy += knockVy;
+                        } else {
+                            thrownDots.set(other.id, { vx: knockVx, vy: knockVy });
+                            startPhysicsLoop();
+                        }
+                    }
+
+                    // Separation: lighter dots get pushed out of the way entirely
+                    // Heavier dots resist and push the dragged dot back
+                    const overlap = minDist - dist;
+
+                    if (m1 >= m2) {
+                        // Dragged dot is heavier or equal - push the other dot out of the way completely
+                        other.x -= nx * overlap;
+                        other.y -= ny * overlap;
+                    } else {
+                        // Dragged dot is lighter - it gets pushed back proportionally
+                        const dragPushRatio = 1 - (m1 / m2);
+                        const otherPushRatio = m1 / m2;
+
+                        other.x -= nx * overlap * otherPushRatio;
+                        other.y -= ny * overlap * otherPushRatio;
+
+                        newX = newX + nx * overlap * dragPushRatio;
+                        newY = newY + ny * overlap * dragPushRatio;
+                    }
+                }
+            }
+
+            dragDot.x = newX;
+            dragDot.y = newY;
+
+            // Track velocity for throwing
+            const now = performance.now();
+            velocityHistory.push({
+                x: newX - prevX,
+                y: newY - prevY,
+                time: now
+            });
+            // Keep only recent samples
+            if (velocityHistory.length > VELOCITY_SAMPLES) {
+                velocityHistory.shift();
+            }
+
+            render();
+
+            dragAnimationId = requestAnimationFrame(animateDrag);
+        }
+
+        // Physics loop for thrown dots
+        let physicsAnimationId = null;
+
+        function physicsLoop() {
+            if (thrownDots.size === 0) {
+                physicsAnimationId = null;
+                return;
+            }
+
+            let needsRender = false;
+
+            for (const [dotId, physics] of thrownDots) {
+                const dot = dots.find(d => d.id === dotId);
+                if (!dot) {
+                    thrownDots.delete(dotId);
+                    continue;
+                }
+
+                // Apply velocity
+                let newX = dot.x + physics.vx;
+                let newY = dot.y + physics.vy;
+
+                // Bounce off screen edges
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                if (newX - dot.radius < 0) {
+                    newX = dot.radius;
+                    physics.vx *= -0.7; // Bounce with energy loss
+                } else if (newX + dot.radius > width) {
+                    newX = width - dot.radius;
+                    physics.vx *= -0.7;
+                }
+
+                if (newY - dot.radius < 0) {
+                    newY = dot.radius;
+                    physics.vy *= -0.7;
+                } else if (newY + dot.radius > height) {
+                    newY = height - dot.radius;
+                    physics.vy *= -0.7;
+                }
+
+                // Check collision with other dots
+                for (const other of dots) {
+                    if (other.id === dotId) continue;
+
+                    // Skip if this collision pair was already processed
+                    const collisionKey = Math.min(dotId, other.id) + '-' + Math.max(dotId, other.id);
+                    if (processedCollisions.has(collisionKey)) continue;
+
+                    const odx = newX - other.x;
+                    const ody = newY - other.y;
+                    const dist = Math.sqrt(odx * odx + ody * ody);
+                    const minDist = dot.radius + other.radius;
+
+                    if (dist < minDist && dist > 0) {
+                        // Mark this collision as processed
+                        processedCollisions.add(collisionKey);
+
+                        // Collision normal (from other to dot)
+                        const nx = odx / dist;
+                        const ny = ody / dist;
+
+                        // Get other dot's velocity (might be stationary or moving)
+                        let otherPhysics = thrownDots.get(other.id);
+                        const otherWasMoving = !!otherPhysics;
+                        if (!otherPhysics) {
+                            otherPhysics = { vx: 0, vy: 0 };
+                        }
+
+                        // Calculate masses based on radius (linear for more dramatic size differences)
+                        const m1 = dot.radius;
+                        const m2 = other.radius;
+                        const totalMass = m1 + m2;
+
+                        // Relative velocity
+                        const dvx = physics.vx - otherPhysics.vx;
+                        const dvy = physics.vy - otherPhysics.vy;
+
+                        // Relative velocity along collision normal
+                        const dvn = dvx * nx + dvy * ny;
+
+                        // Only resolve if dots are moving toward each other
+                        if (dvn < 0) {
+                            // Coefficient of restitution (bounciness)
+                            const restitution = 0.85;
+
+                            // 2D elastic collision velocity changes
+                            // v1' = v1 - (2*m2/(m1+m2)) * dvn * n
+                            // v2' = v2 + (2*m1/(m1+m2)) * dvn * n
+                            const coeffThis = (2 * m2 / totalMass) * dvn * (1 + restitution) / 2;
+                            const coeffOther = (2 * m1 / totalMass) * dvn * (1 + restitution) / 2;
+
+                            // Apply velocity changes
+                            physics.vx -= coeffThis * nx;
+                            physics.vy -= coeffThis * ny;
+
+                            const newOtherVx = otherPhysics.vx + coeffOther * nx;
+                            const newOtherVy = otherPhysics.vy + coeffOther * ny;
+
+                            // Apply impulse to other dot
+                            if (otherWasMoving) {
+                                otherPhysics.vx = newOtherVx;
+                                otherPhysics.vy = newOtherVy;
+                            } else {
+                                // Start the other dot moving
+                                thrownDots.set(other.id, {
+                                    vx: newOtherVx,
+                                    vy: newOtherVy
+                                });
+                            }
+                        }
+
+                        // Separate the dots so they don't overlap
+                        const overlap = minDist - dist;
+                        const separationRatio = m2 / totalMass;
+                        newX += nx * overlap * separationRatio;
+                        newY += ny * overlap * separationRatio;
+
+                        // Move other dot too (proportional to mass)
+                        other.x -= nx * overlap * (1 - separationRatio);
+                        other.y -= ny * overlap * (1 - separationRatio);
+                    }
+                }
+
+                dot.x = newX;
+                dot.y = newY;
+
+                // Apply friction - larger dots have more inertia (less friction effect)
+                const mass = Math.sqrt(dot.radius / DEFAULT_RADIUS);
+                const friction = 1 - (1 - BASE_FRICTION) / mass;
+                physics.vx *= friction;
+                physics.vy *= friction;
+
+                // Stop if velocity is very low
+                const speed = Math.sqrt(physics.vx * physics.vx + physics.vy * physics.vy);
+                if (speed < MIN_VELOCITY) {
+                    // Snap to grid when coming to rest
+                    const snapped = snapToGrid(dot.x, dot.y);
+                    if (!wouldOverlap(snapped.x, snapped.y, dot.radius, dot.id)) {
+                        dot.x = snapped.x;
+                        dot.y = snapped.y;
+                    }
+                    thrownDots.delete(dotId);
+                }
+
+                needsRender = true;
+            }
+
+            if (needsRender) {
+                render();
+            }
+
+            // Clear collision tracking for next frame
+            processedCollisions.clear();
+
+            if (thrownDots.size > 0) {
+                physicsAnimationId = requestAnimationFrame(physicsLoop);
+            } else {
+                physicsAnimationId = null;
+            }
+        }
+
+        function startPhysicsLoop() {
+            if (!physicsAnimationId) {
+                physicsAnimationId = requestAnimationFrame(physicsLoop);
+            }
+        }
+
+        // Global mouse move for dragging
+        svg.on('mousemove', function(event) {
+            if (!dragDot) return;
+
+            const [mx, my] = d3.pointer(event, svg.node());
+            const dx = mx - dragStartPos.x;
+            const dy = my - dragStartPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Start dragging if moved past threshold
+            if (!isDragging && distance > DRAG_THRESHOLD) {
+                isDragging = true;
+                clearHoldTimer(); // Cancel shrink
+                svg.classed('dragging', true);
+                // Start animation loop
+                dragAnimationId = requestAnimationFrame(animateDrag);
+            }
+
+            if (isDragging) {
+                // Track previous target for velocity calculation
+                dragPrevTargetPos = dragTargetPos ? { ...dragTargetPos } : null;
+
+                // Update target position (the dot will animate toward it)
+                dragTargetPos = {
+                    x: dragOriginalPos.x + dx,
+                    y: dragOriginalPos.y + dy
+                };
+            }
+        });
+
+        // Global mouse up to end drag
+        svg.on('mouseup', function(event) {
+            finalizeDrag();
+        });
+
+        function finalizeDrag() {
+            if (isDragging && dragDot) {
+                // Calculate throw velocity from recent movement
+                let vx = 0, vy = 0;
+                if (velocityHistory.length >= 2) {
+                    // Average recent velocities
+                    for (const v of velocityHistory) {
+                        vx += v.x;
+                        vy += v.y;
+                    }
+                    vx /= velocityHistory.length;
+                    vy /= velocityHistory.length;
+
+                    // Keep the same velocity as during drag - no change
+                    const throwMultiplier = 1.0;
+                    vx *= throwMultiplier;
+                    vy *= throwMultiplier;
+                }
+
+                const speed = Math.sqrt(vx * vx + vy * vy);
+
+                // If thrown with enough velocity, start physics simulation
+                if (speed > MIN_VELOCITY * 2) {
+                    thrownDots.set(dragDot.id, { vx, vy });
+                    startPhysicsLoop();
+                } else {
+                    // Not enough velocity - snap to grid
+                    const snapped = snapToGrid(dragDot.x, dragDot.y);
+
+                    if (!wouldOverlap(snapped.x, snapped.y, dragDot.radius, dragDot.id)) {
+                        dragDot.x = snapped.x;
+                        dragDot.y = snapped.y;
+                    } else {
+                        // Try nearby grid positions
+                        const offsets = [
+                            [GRID_SIZE, 0], [-GRID_SIZE, 0], [0, GRID_SIZE], [0, -GRID_SIZE],
+                            [GRID_SIZE, GRID_SIZE], [-GRID_SIZE, GRID_SIZE],
+                            [GRID_SIZE, -GRID_SIZE], [-GRID_SIZE, -GRID_SIZE]
+                        ];
+
+                        for (const [ox, oy] of offsets) {
+                            const testX = snapped.x + ox;
+                            const testY = snapped.y + oy;
+                            if (!wouldOverlap(testX, testY, dragDot.radius, dragDot.id)) {
+                                dragDot.x = testX;
+                                dragDot.y = testY;
+                                break;
+                            }
+                        }
+                    }
+                    render();
+                }
+            }
+
+            isDragging = false;
+            dragDot = null;
+            dragStartPos = null;
+            dragOriginalPos = null;
+            dragTargetPos = null;
+            dragPrevTargetPos = null;
+            velocityHistory = [];
+            dragKnockedDots.clear();
+            if (dragAnimationId) {
+                cancelAnimationFrame(dragAnimationId);
+                dragAnimationId = null;
+            }
+            svg.classed('dragging', false);
+        }
+
+        // Background double-click handler - creates dots
+        background.on('dblclick', function(event) {
+            const [x, y] = d3.pointer(event);
+            createDot(x, y);
+        });
+
+        // Dot count slider
+        const countSlider = document.getElementById('countSlider');
+        const countValue = document.getElementById('countValue');
+
+        countSlider.addEventListener('input', () => {
+            countValue.textContent = countSlider.value;
+        });
+
+        // Toggle grid visibility
+        const gridBtn = document.getElementById('gridBtn');
+        let gridVisible = false;
+
+        gridBtn.addEventListener('click', () => {
+            gridVisible = !gridVisible;
+            gridGroup.style('display', gridVisible ? 'block' : 'none');
+            gridBtn.textContent = gridVisible ? 'Hide Grid' : 'Show Grid';
+            gridBtn.classList.toggle('active', gridVisible);
+        });
+
+        // Clear all
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            dots = [];
+            render();
+        });
+
+        // Initial render
+        render();
+    </script>
+</body>
+</html>
