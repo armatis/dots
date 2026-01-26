@@ -22,6 +22,7 @@
         svg {
             display: block;
             cursor: crosshair;
+            touch-action: none;
         }
 
         circle {
@@ -45,81 +46,568 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
             z-index: 100;
-        }
-
-        #dotCount {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
             font-family: system-ui, -apple-system, sans-serif;
             font-size: 14px;
         }
 
-        #dotCount label {
-            color: #000;
+        #controlsToggle {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+            transition: background 0.2s;
         }
 
-        #dotCount input[type="range"] {
-            width: 80px;
+        #controlsToggle:hover {
+            background: #000;
+        }
+
+        #controlsPanel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            padding: 0;
+            margin-top: 10px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 260px;
+        }
+
+        #controlsPanel.open {
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .control-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .control-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-row label {
+            color: #333;
+            font-size: 13px;
+        }
+
+        .control-row input[type="range"] {
+            width: 100px;
             cursor: pointer;
         }
 
-        #countValue {
-            color: #000;
-            min-width: 20px;
-            text-align: center;
+        .control-row .value {
+            min-width: 30px;
+            text-align: right;
             font-weight: bold;
+            color: #000;
+            font-size: 13px;
         }
 
-        #controls button {
-            padding: 10px 20px;
+        .control-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .toggle-btn {
+            padding: 6px 12px;
             background: transparent;
             color: #000;
             border: 1px solid #000;
             border-radius: 4px;
-            font-family: system-ui, -apple-system, sans-serif;
-            font-size: 14px;
+            font-size: 12px;
             cursor: pointer;
             transition: background 0.2s, color 0.2s;
         }
 
-        #controls button:hover {
+        .toggle-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-btn.active {
+            background: #000;
+            color: #fff;
+        }
+
+        .modifier-toggles {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            color: #000;
+            border: 1px solid #000;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            margin-top: 8px;
+        }
+
+        .action-btn:first-child {
+            margin-top: 0;
+        }
+
+        .action-btn:hover {
             background: #000;
             color: #be5504;
         }
 
-        #controls button.active {
+        .action-btn.danger {
+            border-color: #c00;
+            color: #c00;
+            margin-top: 16px;
+        }
+
+        .action-btn.danger:hover {
+            background: #c00;
+            color: #fff;
+        }
+
+        .kbd-hint {
+            font-size: 10px;
+            color: #999;
+            margin-left: 4px;
+        }
+
+        .control-row select {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            background: #fff;
+        }
+
+        #freezeIndicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border-radius: 8px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 150;
+        }
+
+        #freezeIndicator.active {
+            opacity: 1;
+        }
+
+        #modifiers {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .modifier {
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border-radius: 4px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.15s, transform 0.15s;
+            pointer-events: none;
+        }
+
+        .modifier.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #helpBtn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            color: #000;
+            border: 1px solid #000;
+            border-radius: 50%;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            z-index: 100;
+        }
+
+        #helpBtn:hover {
             background: #000;
             color: #be5504;
+        }
+
+        #helpModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        #helpModal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #helpContent {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 400px;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        #helpContent h2 {
+            margin: 0 0 20px 0;
+            font-size: 20px;
+            color: #000;
+        }
+
+        #helpContent dl {
+            margin: 0;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px 20px;
+        }
+
+        #helpContent dt {
+            font-weight: bold;
+            color: #000;
+        }
+
+        #helpContent dd {
+            margin: 0;
+            color: #333;
+        }
+
+        #helpContent kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        #closeHelp {
+            margin-top: 20px;
+            padding: 8px 20px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #closeHelp:hover {
+            background: #333;
         }
     </style>
 </head>
 <body>
     <svg id="canvas"></svg>
-    <div id="controls">
-        <div id="dotCount">
-            <label for="countSlider">Dots:</label>
-            <input type="range" id="countSlider" min="1" max="12" value="1">
-            <span id="countValue">1</span>
+
+    <div id="modifiers">
+        <div id="boostIndicator" class="modifier">BOOST</div>
+        <div id="perpetualIndicator" class="modifier">∞ PERPETUAL</div>
+    </div>
+
+    <div id="freezeIndicator">❄ FROZEN</div>
+
+    <button id="helpBtn">?</button>
+
+    <div id="helpModal">
+        <div id="helpContent">
+            <h2>Controls</h2>
+            <dl>
+                <dt>Create dot(s)</dt>
+                <dd>Double-click empty space</dd>
+
+                <dt>Grow dot</dt>
+                <dd>Double-click stationary dot</dd>
+
+                <dt>Shrink dot</dt>
+                <dd>Hold on dot for 0.8s</dd>
+
+                <dt>Stop moving dot</dt>
+                <dd>Double-click moving dot</dd>
+
+                <dt>Drag &amp; throw</dt>
+                <dd>Click and drag, release to throw</dd>
+
+                <dt><kbd>A</kbd> + drag</dt>
+                <dd>Boost speed (3x faster)</dd>
+
+                <dt><kbd>C</kbd> + release</dt>
+                <dd>Perpetual motion (no friction)</dd>
+
+                <dt><kbd>F</kbd></dt>
+                <dd>Toggle freeze mode</dd>
+
+                <dt><kbd>?</kbd></dt>
+                <dd>Toggle this help</dd>
+
+                <dt><kbd>Esc</kbd></dt>
+                <dd>Close panels</dd>
+
+                <dt>Settings</dt>
+                <dd>Click ⚙ for more options</dd>
+            </dl>
+            <button id="closeHelp">Got it</button>
         </div>
-        <button id="gridBtn">Show Grid</button>
-        <button id="clearBtn">Clear All</button>
+    </div>
+
+    <div id="controls">
+        <button id="controlsToggle">⚙</button>
+        <div id="controlsPanel">
+            <div class="control-section">
+                <h3>Creation</h3>
+                <div class="control-row">
+                    <label for="countSlider">Dots per click</label>
+                    <input type="range" id="countSlider" min="1" max="12" value="1">
+                    <span class="value" id="countValue">1</span>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Modifiers</h3>
+                <div class="modifier-toggles">
+                    <button class="toggle-btn" id="boostToggle">
+                        Boost <span class="kbd-hint">(A)</span>
+                    </button>
+                    <button class="toggle-btn" id="perpetualToggle">
+                        Perpetual <span class="kbd-hint">(C)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Physics</h3>
+                <div class="control-row">
+                    <label for="frictionSlider">Friction</label>
+                    <input type="range" id="frictionSlider" min="90" max="100" value="98" step="0.5">
+                    <span class="value" id="frictionValue">98</span>
+                </div>
+                <div class="control-row">
+                    <label for="bounceSlider">Bounciness</label>
+                    <input type="range" id="bounceSlider" min="0" max="100" value="85">
+                    <span class="value" id="bounceValue">85</span>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Mode</h3>
+                <div class="control-row">
+                    <label for="freezeToggle">Freeze</label>
+                    <input type="checkbox" id="freezeToggle">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Display</h3>
+                <div class="control-row">
+                    <label for="gridToggle">Show Grid</label>
+                    <input type="checkbox" id="gridToggle">
+                </div>
+                <div class="control-row">
+                    <label for="themeSelect">Theme</label>
+                    <select id="themeSelect">
+                        <option value="orange">Orange</option>
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="forest">Forest</option>
+                        <option value="sunset">Sunset</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Actions</h3>
+                <button class="action-btn" id="stopAllBtn">Stop All Dots</button>
+                <button class="action-btn" id="saveBtn">Save</button>
+                <button class="action-btn" id="loadBtn">Load</button>
+                <button class="action-btn danger" id="clearBtn">Clear All</button>
+            </div>
+        </div>
     </div>
 
     <script>
+        /*
+         * ========== POTENTIAL OPTIMIZATIONS ==========
+         *
+         * These optimizations are not currently needed but could be
+         * implemented if performance becomes an issue with many dots.
+         *
+         * 1. SPATIAL PARTITIONING (Collision Detection)
+         *    Current: O(n²) - every dot checked against every other dot
+         *    Solution: Divide screen into grid cells, only check dots in
+         *    neighboring cells. Use cell size ~= largest dot diameter.
+         *    Benefit: O(n) average case for evenly distributed dots
+         *    When: 100+ dots with noticeable frame drops
+         *
+         * 2. OBJECT POOLING (Memory/GC)
+         *    Current: Trail points created/destroyed frequently
+         *    Solution: Pre-allocate pool of trail point objects, reuse them
+         *    Benefit: Reduces garbage collection pauses
+         *    When: Noticeable stuttering from GC during heavy trail usage
+         *
+         * 3. CANVAS RENDERING (Rendering)
+         *    Current: SVG with D3 data binding
+         *    Solution: Switch to Canvas 2D for dots/trails, keep SVG for UI
+         *    Benefit: Much faster for many moving objects (no DOM updates)
+         *    When: 200+ dots with trails causing frame drops
+         *
+         * 4. WEB WORKERS (Physics)
+         *    Current: Physics runs on main thread
+         *    Solution: Offload collision detection to Web Worker
+         *    Benefit: Keeps UI responsive during heavy physics
+         *    When: Physics calculations blocking input responsiveness
+         *
+         * 5. BROAD PHASE COLLISION (Collision Detection)
+         *    Current: Circle-circle distance check for all pairs
+         *    Solution: AABB (bounding box) check first, then precise check
+         *    Benefit: AABB check is faster (no sqrt), rejects obvious misses
+         *    When: Useful in combination with spatial partitioning
+         *
+         * 6. TRAIL PATH OPTIMIZATION (Rendering)
+         *    Current: Each trail point is a separate SVG circle
+         *    Solution: Use single SVG path or Canvas for each dot's trail
+         *    Benefit: Fewer DOM nodes, faster rendering
+         *    When: Many dots with long trails causing slowdown
+         *
+         * 7. FRAME SKIPPING (Physics)
+         *    Current: Physics runs every animation frame
+         *    Solution: Run physics at fixed timestep, interpolate for render
+         *    Benefit: Consistent physics regardless of frame rate
+         *    When: Physics behaves differently on high/low refresh displays
+         */
+
         // Configuration
         const DEFAULT_RADIUS = 6;
         const MIN_RADIUS = 10;
         const MAX_RADIUS = 200;
         const HOLD_DURATION = 800;
         const GRID_SIZE = DEFAULT_RADIUS;
+        const STROKE_WIDTH = 1.5;
+
+        // Physics constants
+        const BASE_FRICTION = 0.98;
+        const MIN_VELOCITY = 0.1;
+        const RESTITUTION = 0.85;
+        const COLLISION_ITERATIONS = 4;
+
+        // Freeze state
+        let isFrozen = false;
+
+        // Color themes
+        const themes = {
+            orange: {
+                name: 'Orange',
+                background: '#be5504',
+                dotFill: '#ffffff',
+                dotStroke: '#000000',
+                ui: '#000000'
+            },
+            dark: {
+                name: 'Dark',
+                background: '#1a1a2e',
+                dotFill: '#eaeaea',
+                dotStroke: '#4a4a6a',
+                ui: '#ffffff'
+            },
+            light: {
+                name: 'Light',
+                background: '#f5f5f5',
+                dotFill: '#333333',
+                dotStroke: '#000000',
+                ui: '#000000'
+            },
+            ocean: {
+                name: 'Ocean',
+                background: '#0a3d62',
+                dotFill: '#82ccdd',
+                dotStroke: '#ffffff',
+                ui: '#ffffff'
+            },
+            forest: {
+                name: 'Forest',
+                background: '#1e3d2f',
+                dotFill: '#a8e6cf',
+                dotStroke: '#2d5a3f',
+                ui: '#ffffff'
+            },
+            sunset: {
+                name: 'Sunset',
+                background: '#2c1654',
+                dotFill: '#ff6b6b',
+                dotStroke: '#feca57',
+                ui: '#ffffff'
+            }
+        };
+        let currentTheme = 'orange';
 
         // State
         let dots = [];
@@ -127,33 +615,55 @@
         let holdTimer = null;
         let holdDotId = null;
 
+        // Unified velocity state for ALL moving dots (dragged or thrown)
+        let dotVelocities = new Map(); // dotId -> { vx, vy }
+
         // Drag state
         const DRAG_THRESHOLD = 5;
+        const BOOST_MULTIPLIER = 3;
         let isDragging = false;
-        let dragDot = null;
+        let dragDotId = null;
         let dragStartPos = null;
         let dragOriginalPos = null;
         let dragTargetPos = null;
-        let dragPrevTargetPos = null;
-        let dragAnimationId = null;
-        let dragKnockedDots = new Set(); // Track dots already knocked this drag
+        let isBoostKeyHeld = false;
+        let isNoFrictionKeyHeld = false;
+        let noFrictionDots = new Set(); // Dots that should never decelerate
 
-        // Velocity tracking for throwing
+        // Physics loop
+        let physicsAnimationId = null;
+
+        // Velocity tracking for throw release
         let velocityHistory = [];
         const VELOCITY_SAMPLES = 5;
 
-        // Physics state for thrown dots
-        const BASE_FRICTION = 0.98;
-        const MIN_VELOCITY = 0.1;
-        let thrownDots = new Map(); // dotId -> { vx, vy }
-        let processedCollisions = new Set(); // Track collisions already handled this frame
+        // Collision tracking
+        let processedCollisions = new Set();
 
-        // Setup SVG
+        // Touch support
+        let lastTapTime = 0;
+        let lastTapPos = null;
+        const DOUBLE_TAP_THRESHOLD = 300;
+        const DOUBLE_TAP_DISTANCE = 30;
+
+        // Trail system
+        const TRAIL_SPEED_THRESHOLD = 8; // Speed at which trails appear (2x normal movement)
+        const TRAIL_MAX_LENGTH = 20; // Max trail points per dot
+        const TRAIL_FADE_RATE = 0.05; // How fast trails fade
+        let dotTrails = new Map(); // dotId -> [{x, y, opacity, radius}]
+
+        // ========== UNIFIED MASS FUNCTION ==========
+        // Area-based mass: (radius / DEFAULT_RADIUS)^2
+        function mass(dot) {
+            const ratio = dot.radius / DEFAULT_RADIUS;
+            return ratio * ratio;
+        }
+
+        // ========== SETUP SVG ==========
         const svg = d3.select('#canvas')
             .attr('width', window.innerWidth)
             .attr('height', window.innerHeight);
 
-        // Background rect for click handling
         const background = svg.append('rect')
             .attr('width', window.innerWidth)
             .attr('height', window.innerHeight)
@@ -164,55 +674,44 @@
             .attr('class', 'grid')
             .style('display', 'none');
 
-        // Draw grid
         function drawGrid() {
             gridGroup.selectAll('*').remove();
-
             const width = window.innerWidth;
             const height = window.innerHeight;
 
-            // Vertical lines
             for (let x = 0; x <= width; x += GRID_SIZE) {
                 gridGroup.append('line')
-                    .attr('x1', x)
-                    .attr('y1', 0)
-                    .attr('x2', x)
-                    .attr('y2', height)
+                    .attr('x1', x).attr('y1', 0)
+                    .attr('x2', x).attr('y2', height)
                     .attr('stroke', 'rgba(0,0,0,0.2)')
                     .attr('stroke-width', 0.5);
             }
-
-            // Horizontal lines
             for (let y = 0; y <= height; y += GRID_SIZE) {
                 gridGroup.append('line')
-                    .attr('x1', 0)
-                    .attr('y1', y)
-                    .attr('x2', width)
-                    .attr('y2', y)
+                    .attr('x1', 0).attr('y1', y)
+                    .attr('x2', width).attr('y2', y)
                     .attr('stroke', 'rgba(0,0,0,0.2)')
                     .attr('stroke-width', 0.5);
             }
         }
-
         drawGrid();
 
-        // Group for dots
+        // Trail group (behind dots)
+        const trailGroup = svg.append('g').attr('class', 'trails');
+
         const dotsGroup = svg.append('g');
 
-        // Handle resize
         window.addEventListener('resize', () => {
             svg.attr('width', window.innerWidth).attr('height', window.innerHeight);
             background.attr('width', window.innerWidth).attr('height', window.innerHeight);
             drawGrid();
         });
 
-        // Utility functions
+        // ========== UTILITY FUNCTIONS ==========
         const snapToGrid = (x, y) => ({
             x: Math.round(x / GRID_SIZE) * GRID_SIZE,
             y: Math.round(y / GRID_SIZE) * GRID_SIZE
         });
-
-        const STROKE_WIDTH = 1.5;
 
         const wouldOverlap = (x, y, radius, excludeId = null) => {
             return dots.some(dot => {
@@ -220,7 +719,6 @@
                 const dx = dot.x - x;
                 const dy = dot.y - y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                // Dots overlap if distance is less than sum of radii (allow strokes to touch/overlap)
                 return distance < radius + dot.radius;
             });
         };
@@ -264,41 +762,163 @@
             );
         };
 
-        // Render dots using D3 data binding
+        // ========== UNIFIED COLLISION SOLVER ==========
+        // Resolves collision between two dots using impulse-based elastic collision
+        // Updates velocities and separates positions
+        function resolveCollision(dotA, dotB, velA, velB) {
+            const dx = dotB.x - dotA.x;
+            const dy = dotB.y - dotA.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const minDist = dotA.radius + dotB.radius;
+
+            if (dist >= minDist || dist === 0) return false;
+
+            // Collision normal (from A to B)
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            // Masses
+            const mA = mass(dotA);
+            const mB = mass(dotB);
+            const totalMass = mA + mB;
+
+            // Relative velocity (A relative to B)
+            const relVx = velA.vx - velB.vx;
+            const relVy = velA.vy - velB.vy;
+
+            // Relative velocity along collision normal
+            const relVelNormal = relVx * nx + relVy * ny;
+
+            // Only resolve if moving toward each other
+            if (relVelNormal > 0) {
+                // Impulse scalar (use dynamic restitution from slider)
+                const restitution = getRestitution();
+                const impulse = (1 + restitution) * relVelNormal / (1/mA + 1/mB);
+
+                // Apply impulse to velocities
+                velA.vx -= (impulse / mA) * nx;
+                velA.vy -= (impulse / mA) * ny;
+                velB.vx += (impulse / mB) * nx;
+                velB.vy += (impulse / mB) * ny;
+            }
+
+            // Positional separation (mass-proportional)
+            const overlap = minDist - dist;
+            const separationA = overlap * (mB / totalMass);
+            const separationB = overlap * (mA / totalMass);
+
+            dotA.x -= nx * separationA;
+            dotA.y -= ny * separationA;
+            dotB.x += nx * separationB;
+            dotB.y += ny * separationB;
+
+            return true;
+        }
+
+        // ========== TRAIL SYSTEM ==========
+        function updateTrails() {
+            const theme = themes[currentTheme];
+
+            // Update trail points for fast-moving dots
+            for (const [dotId, vel] of dotVelocities) {
+                const dot = dots.find(d => d.id === dotId);
+                if (!dot) continue;
+
+                const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+
+                if (speed >= TRAIL_SPEED_THRESHOLD) {
+                    // Add new trail point
+                    if (!dotTrails.has(dotId)) {
+                        dotTrails.set(dotId, []);
+                    }
+                    const trail = dotTrails.get(dotId);
+                    trail.unshift({
+                        x: dot.x,
+                        y: dot.y,
+                        opacity: 0.6,
+                        radius: dot.radius * 0.8
+                    });
+
+                    // Limit trail length
+                    if (trail.length > TRAIL_MAX_LENGTH) {
+                        trail.pop();
+                    }
+                }
+            }
+
+            // Fade all trails
+            for (const [dotId, trail] of dotTrails) {
+                for (let i = trail.length - 1; i >= 0; i--) {
+                    trail[i].opacity -= TRAIL_FADE_RATE;
+                    trail[i].radius *= 0.95;
+                    if (trail[i].opacity <= 0) {
+                        trail.splice(i, 1);
+                    }
+                }
+                if (trail.length === 0) {
+                    dotTrails.delete(dotId);
+                }
+            }
+
+            // Render trails
+            const allTrailPoints = [];
+            for (const [dotId, trail] of dotTrails) {
+                for (const point of trail) {
+                    allTrailPoints.push({ ...point, dotId });
+                }
+            }
+
+            const trailCircles = trailGroup.selectAll('circle')
+                .data(allTrailPoints, (d, i) => d.dotId + '-' + i);
+
+            trailCircles.exit().remove();
+
+            trailCircles.enter()
+                .append('circle')
+                .merge(trailCircles)
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y)
+                .attr('r', d => d.radius)
+                .attr('fill', theme.dotFill)
+                .attr('opacity', d => d.opacity)
+                .attr('stroke', 'none');
+        }
+
+        // ========== RENDER ==========
         function render() {
             const circles = dotsGroup.selectAll('circle')
                 .data(dots, d => d.id);
 
-            // Remove old dots
             circles.exit().remove();
 
-            // Add new dots
+            const theme = themes[currentTheme];
             circles.enter()
                 .append('circle')
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y)
                 .attr('r', d => d.radius)
-                .attr('fill', '#fff')
-                .attr('stroke', '#000')
+                .attr('fill', theme.dotFill)
+                .attr('stroke', theme.dotStroke)
                 .attr('stroke-width', STROKE_WIDTH)
                 .on('mousedown', onDotMouseDown)
                 .on('mouseup', onDotMouseUp)
                 .on('mouseleave', onDotMouseLeave)
-                .on('dblclick', onDotDoubleClick);
+                .on('dblclick', onDotDoubleClick)
+                .on('touchstart', onDotTouchStart)
+                .on('touchend', onDotTouchEnd)
+                .on('touchmove', onDotTouchMove);
 
-            // Update existing dots
             circles
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y)
                 .attr('r', d => d.radius);
         }
 
-        // Create a new dot (or multiple dots in a cluster)
+        // ========== DOT CREATION ==========
         function createDot(x, y) {
             const count = parseInt(document.getElementById('countSlider').value, 10);
 
             if (count === 1) {
-                // Single dot - use existing placement logic
                 const placement = findPlacementPosition(x, y, DEFAULT_RADIUS);
                 if (!wouldOverlap(placement.x, placement.y, DEFAULT_RADIUS)) {
                     dots.push({
@@ -309,24 +929,18 @@
                     });
                 }
             } else {
-                // Multiple dots - create in a cluster pattern
                 createDotCluster(x, y, count);
             }
             render();
         }
 
-        // Create multiple dots in a touching cluster
         function createDotCluster(centerX, centerY, count) {
             const diameter = DEFAULT_RADIUS * 2;
-            const created = [];
-
-            // Find valid position for center dot
             const centerPlacement = findPlacementPosition(centerX, centerY, DEFAULT_RADIUS);
             if (wouldOverlap(centerPlacement.x, centerPlacement.y, DEFAULT_RADIUS)) {
-                return; // Can't place even the first dot
+                return;
             }
 
-            // Create center dot
             const centerDot = {
                 id: nextId++,
                 x: centerPlacement.x,
@@ -334,17 +948,14 @@
                 radius: DEFAULT_RADIUS
             };
             dots.push(centerDot);
-            created.push(centerDot);
 
             if (count === 1) return;
 
-            // Place remaining dots around the center in a spiral/ring pattern
             let placed = 1;
             let ring = 1;
-            let angleOffset = Math.random() * Math.PI * 2; // Random starting angle
+            let angleOffset = Math.random() * Math.PI * 2;
 
             while (placed < count) {
-                // Number of dots that can fit in this ring
                 const dotsInRing = ring === 1 ? 6 : ring * 6;
                 const angleStep = (Math.PI * 2) / dotsInRing;
 
@@ -357,27 +968,22 @@
 
                     const snapped = snapToGrid(testX, testY);
 
-                    // Check if this position works
                     if (!wouldOverlap(snapped.x, snapped.y, DEFAULT_RADIUS)) {
-                        const newDot = {
+                        dots.push({
                             id: nextId++,
                             x: snapped.x,
                             y: snapped.y,
                             radius: DEFAULT_RADIUS
-                        };
-                        dots.push(newDot);
-                        created.push(newDot);
+                        });
                         placed++;
                     }
                 }
                 ring++;
-
-                // Safety limit
                 if (ring > 5) break;
             }
         }
 
-        // Grow a dot
+        // ========== GROW / SHRINK ==========
         function growDot(id) {
             const dot = dots.find(d => d.id === id);
             if (!dot) return;
@@ -385,14 +991,13 @@
             const newRadius = Math.min(dot.radius * 2, MAX_RADIUS);
             const radiusIncrease = newRadius - dot.radius;
 
-            // If no overlap at current position, just grow
             if (!wouldOverlap(dot.x, dot.y, newRadius, id)) {
                 dot.radius = newRadius;
                 render();
                 return;
             }
 
-            // Find dots that would overlap with the new size
+            // Find dots that would overlap and shift away
             const overlappingDots = dots.filter(other => {
                 if (other.id === id) return false;
                 const dx = other.x - dot.x;
@@ -403,9 +1008,7 @@
 
             if (overlappingDots.length === 0) return;
 
-            // Calculate shift direction (away from overlapping dots)
-            let shiftX = 0;
-            let shiftY = 0;
+            let shiftX = 0, shiftY = 0;
             for (const other of overlappingDots) {
                 const dx = dot.x - other.x;
                 const dy = dot.y - other.y;
@@ -416,27 +1019,22 @@
                 }
             }
 
-            // Normalize shift direction
             const shiftMag = Math.sqrt(shiftX * shiftX + shiftY * shiftY);
             if (shiftMag === 0) return;
             shiftX /= shiftMag;
             shiftY /= shiftMag;
 
-            // Calculate how much to shift (need to move by the radius increase)
             const newX = dot.x + shiftX * radiusIncrease;
             const newY = dot.y + shiftY * radiusIncrease;
 
-            // Check if new position is valid
             if (!wouldOverlap(newX, newY, newRadius, id)) {
                 dot.x = newX;
                 dot.y = newY;
                 dot.radius = newRadius;
                 render();
             }
-            // If still overlaps, not enough space - don't grow
         }
 
-        // Shrink a dot
         function shrinkDot(id) {
             const dot = dots.find(d => d.id === id);
             if (!dot) return;
@@ -444,13 +1042,16 @@
             const newRadius = dot.radius / 2;
             if (newRadius < MIN_RADIUS) {
                 dots = dots.filter(d => d.id !== id);
+                dotVelocities.delete(id);
+                noFrictionDots.delete(id);
+                dotTrails.delete(id);
             } else {
                 dot.radius = newRadius;
             }
             render();
         }
 
-        // Clear hold timer
+        // ========== HOLD TIMER ==========
         function clearHoldTimer() {
             if (holdTimer) {
                 clearTimeout(holdTimer);
@@ -459,17 +1060,21 @@
             holdDotId = null;
         }
 
-        // Dot event handlers
+        // ========== DOT EVENT HANDLERS ==========
         function onDotMouseDown(event, d) {
             event.stopPropagation();
             holdDotId = d.id;
 
-            // Track drag start position
             const [mx, my] = d3.pointer(event, svg.node());
             dragStartPos = { x: mx, y: my };
             dragOriginalPos = { x: d.x, y: d.y };
-            dragDot = d;
+            dragDotId = d.id;
             isDragging = false;
+
+            // Initialize velocity for this dot if not already moving
+            if (!dotVelocities.has(d.id)) {
+                dotVelocities.set(d.id, { vx: 0, vy: 0 });
+            }
 
             holdTimer = setTimeout(() => {
                 if (holdDotId === d.id && !isDragging) {
@@ -486,7 +1091,6 @@
         }
 
         function onDotMouseLeave(event, d) {
-            // Don't clear if we're dragging (mouse will leave the dot)
             if (!isDragging) {
                 clearHoldTimer();
             }
@@ -497,307 +1101,358 @@
             event.preventDefault();
             clearHoldTimer();
 
-            // If dot is moving, stop it instead of growing
-            if (thrownDots.has(d.id)) {
-                thrownDots.delete(d.id);
-                // Snap to grid when stopped
-                const snapped = snapToGrid(d.x, d.y);
-                if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
-                    d.x = snapped.x;
-                    d.y = snapped.y;
+            // If dot is moving, stop it
+            if (dotVelocities.has(d.id)) {
+                const vel = dotVelocities.get(d.id);
+                const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                if (speed > MIN_VELOCITY) {
+                    dotVelocities.delete(d.id);
+                    noFrictionDots.delete(d.id);
+                    const snapped = snapToGrid(d.x, d.y);
+                    if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
+                        d.x = snapped.x;
+                        d.y = snapped.y;
+                    }
+                    render();
+                    return;
                 }
-                render();
-                return;
             }
 
             growDot(d.id);
         }
 
-        // Animation loop for weighted dragging
-        function animateDrag() {
-            if (!isDragging || !dragDot || !dragTargetPos) {
-                dragAnimationId = null;
-                return;
-            }
+        // ========== TOUCH EVENT HANDLERS FOR DOTS ==========
+        function onDotTouchStart(event, d) {
+            event.preventDefault();
+            event.stopPropagation();
 
-            const prevX = dragDot.x;
-            const prevY = dragDot.y;
+            const touch = event.touches[0];
+            const [tx, ty] = [touch.clientX, touch.clientY];
 
-            // Weight based on size - larger dots are heavier
-            const weight = dragDot.radius / DEFAULT_RADIUS;
-            let responsiveness = Math.min(1, 0.3 / Math.sqrt(weight));
-
-            // Interpolate toward target
-            let newX = dragDot.x + (dragTargetPos.x - dragDot.x) * responsiveness;
-            let newY = dragDot.y + (dragTargetPos.y - dragDot.y) * responsiveness;
-
-            // Calculate mouse/target velocity (the actual user input force)
-            let mouseVx = 0, mouseVy = 0;
-            if (dragPrevTargetPos) {
-                mouseVx = dragTargetPos.x - dragPrevTargetPos.x;
-                mouseVy = dragTargetPos.y - dragPrevTargetPos.y;
-            }
-
-            // For collisions, use the mouse velocity (user's intent) not the dampened dot movement
-            // Scale by weight - heavier dots transfer more momentum
-            const collisionVx = mouseVx;
-            const collisionVy = mouseVy;
-            const dragSpeed = Math.sqrt(collisionVx * collisionVx + collisionVy * collisionVy);
-
-            // Check collision with each other dot
-            for (const other of dots) {
-                if (other.id === dragDot.id) continue;
-
-                const odx = newX - other.x;
-                const ody = newY - other.y;
-                const dist = Math.sqrt(odx * odx + ody * ody);
-                const minDist = dragDot.radius + other.radius;
-
-                // If we've moved away from a previously knocked dot, allow knocking again
-                if (dist > minDist * 1.5 && dragKnockedDots.has(other.id)) {
-                    dragKnockedDots.delete(other.id);
-                }
-
-                if (dist < minDist && dist > 0) {
-                    // Collision normal (from other to dragged dot)
-                    const nx = odx / dist;
-                    const ny = ody / dist;
-
-                    // Calculate masses (same as thrown physics)
-                    const m1 = dragDot.radius;
-                    const m2 = other.radius;
-                    const totalMass = m1 + m2;
-
-                    // Get other dot's current velocity
-                    let otherPhysics = thrownDots.get(other.id);
-                    const otherVx = otherPhysics ? otherPhysics.vx : 0;
-                    const otherVy = otherPhysics ? otherPhysics.vy : 0;
-
-                    // Relative velocity (collision velocity vs other's velocity)
-                    const relVx = collisionVx - otherVx;
-                    const relVy = collisionVy - otherVy;
-                    const dvn = -(relVx * nx + relVy * ny);
-
-                    // Only process if moving toward each other and haven't knocked yet
-                    if (dvn > 0.1 && !dragKnockedDots.has(other.id)) {
-                        dragKnockedDots.add(other.id);
-
-                        // Use same elastic collision formula as thrown dots
-                        const restitution = 0.85;
-                        const coeffOther = (2 * m1 / totalMass) * dvn * (1 + restitution) / 2;
-
-                        // Knock the other dot
-                        const knockVx = coeffOther * nx;
-                        const knockVy = coeffOther * ny;
-
-                        if (otherPhysics) {
-                            otherPhysics.vx += knockVx;
-                            otherPhysics.vy += knockVy;
-                        } else {
-                            thrownDots.set(other.id, { vx: knockVx, vy: knockVy });
-                            startPhysicsLoop();
-                        }
-                    }
-
-                    // Separation: lighter dots get pushed out of the way entirely
-                    // Heavier dots resist and push the dragged dot back
-                    const overlap = minDist - dist;
-
-                    if (m1 >= m2) {
-                        // Dragged dot is heavier or equal - push the other dot out of the way completely
-                        other.x -= nx * overlap;
-                        other.y -= ny * overlap;
-                    } else {
-                        // Dragged dot is lighter - it gets pushed back proportionally
-                        const dragPushRatio = 1 - (m1 / m2);
-                        const otherPushRatio = m1 / m2;
-
-                        other.x -= nx * overlap * otherPushRatio;
-                        other.y -= ny * overlap * otherPushRatio;
-
-                        newX = newX + nx * overlap * dragPushRatio;
-                        newY = newY + ny * overlap * dragPushRatio;
-                    }
+            // Check for double-tap
+            const now = Date.now();
+            if (lastTapTime && now - lastTapTime < DOUBLE_TAP_THRESHOLD && lastTapPos) {
+                const dist = Math.sqrt((tx - lastTapPos.x) ** 2 + (ty - lastTapPos.y) ** 2);
+                if (dist < DOUBLE_TAP_DISTANCE) {
+                    // Double-tap detected
+                    lastTapTime = 0;
+                    lastTapPos = null;
+                    onDotDoubleClick(event, d);
+                    return;
                 }
             }
+            lastTapTime = now;
+            lastTapPos = { x: tx, y: ty };
 
-            dragDot.x = newX;
-            dragDot.y = newY;
+            // Start drag
+            holdDotId = d.id;
+            const rect = svg.node().getBoundingClientRect();
+            dragStartPos = { x: tx - rect.left, y: ty - rect.top };
+            dragOriginalPos = { x: d.x, y: d.y };
+            dragDotId = d.id;
+            isDragging = false;
 
-            // Track velocity for throwing
-            const now = performance.now();
-            velocityHistory.push({
-                x: newX - prevX,
-                y: newY - prevY,
-                time: now
-            });
-            // Keep only recent samples
-            if (velocityHistory.length > VELOCITY_SAMPLES) {
-                velocityHistory.shift();
+            if (!dotVelocities.has(d.id)) {
+                dotVelocities.set(d.id, { vx: 0, vy: 0 });
             }
 
-            render();
-
-            dragAnimationId = requestAnimationFrame(animateDrag);
+            holdTimer = setTimeout(() => {
+                if (holdDotId === d.id && !isDragging) {
+                    shrinkDot(d.id);
+                }
+                clearHoldTimer();
+            }, HOLD_DURATION);
         }
 
-        // Physics loop for thrown dots
-        let physicsAnimationId = null;
+        function onDotTouchMove(event, d) {
+            if (dragDotId === null) return;
+            event.preventDefault();
 
-        function physicsLoop() {
-            if (thrownDots.size === 0) {
-                physicsAnimationId = null;
-                return;
+            const touch = event.touches[0];
+            const rect = svg.node().getBoundingClientRect();
+            const tx = touch.clientX - rect.left;
+            const ty = touch.clientY - rect.top;
+
+            const dx = tx - dragStartPos.x;
+            const dy = ty - dragStartPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (!isDragging && distance > DRAG_THRESHOLD) {
+                isDragging = true;
+                clearHoldTimer();
+                svg.classed('dragging', true);
+                startPhysicsLoop();
             }
 
-            let needsRender = false;
+            if (isDragging) {
+                dragTargetPos = {
+                    x: dragOriginalPos.x + dx,
+                    y: dragOriginalPos.y + dy
+                };
+            }
+        }
 
-            for (const [dotId, physics] of thrownDots) {
+        function onDotTouchEnd(event, d) {
+            event.preventDefault();
+            finalizeDrag();
+            clearHoldTimer();
+        }
+
+        // ========== DRAG HANDLING ==========
+        svg.on('mousemove', function(event) {
+            if (dragDotId === null) return;
+
+            const [mx, my] = d3.pointer(event, svg.node());
+            const dx = mx - dragStartPos.x;
+            const dy = my - dragStartPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (!isDragging && distance > DRAG_THRESHOLD) {
+                isDragging = true;
+                clearHoldTimer();
+                svg.classed('dragging', true);
+                startPhysicsLoop();
+            }
+
+            if (isDragging) {
+                dragTargetPos = {
+                    x: dragOriginalPos.x + dx,
+                    y: dragOriginalPos.y + dy
+                };
+            }
+        });
+
+        svg.on('mouseup', function(event) {
+            finalizeDrag();
+        });
+
+        function finalizeDrag() {
+            if (isDragging && dragDotId !== null) {
+                // On release, just let physics continue - don't switch modes
+                // The dot already has velocity from steering
+                const vel = dotVelocities.get(dragDotId);
+                if (vel) {
+                    const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                    if (speed < MIN_VELOCITY) {
+                        // If barely moving, snap to grid and stop
+                        const dot = dots.find(d => d.id === dragDotId);
+                        if (dot) {
+                            const snapped = snapToGrid(dot.x, dot.y);
+                            if (!wouldOverlap(snapped.x, snapped.y, dot.radius, dot.id)) {
+                                dot.x = snapped.x;
+                                dot.y = snapped.y;
+                            }
+                        }
+                        dotVelocities.delete(dragDotId);
+                        noFrictionDots.delete(dragDotId);
+                        render();
+                    } else if (isNoFrictionKeyHeld) {
+                        // Mark this dot as no-friction (perpetual motion)
+                        noFrictionDots.add(dragDotId);
+                    }
+                }
+            } else if (dragDotId !== null) {
+                // Wasn't dragging, remove velocity if stationary
+                const vel = dotVelocities.get(dragDotId);
+                if (vel && Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy) < MIN_VELOCITY) {
+                    dotVelocities.delete(dragDotId);
+                }
+            }
+
+            isDragging = false;
+            dragDotId = null;
+            dragStartPos = null;
+            dragOriginalPos = null;
+            dragTargetPos = null;
+            velocityHistory = [];
+            svg.classed('dragging', false);
+        }
+
+        // ========== UNIFIED PHYSICS LOOP ==========
+        function physicsLoop() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            // Step 1: Apply drag steering (if dragging)
+            if (isDragging && dragDotId !== null && dragTargetPos) {
+                const dragDot = dots.find(d => d.id === dragDotId);
+                if (dragDot) {
+                    let vel = dotVelocities.get(dragDotId);
+                    if (!vel) {
+                        vel = { vx: 0, vy: 0 };
+                        dotVelocities.set(dragDotId, vel);
+                    }
+
+                    // Weight-based responsiveness (boosted when A key is held)
+                    const weight = mass(dragDot);
+                    const baseResponsiveness = Math.min(1, 0.3 / Math.sqrt(weight));
+                    const responsiveness = isBoostKeyHeld
+                        ? Math.min(1, baseResponsiveness * BOOST_MULTIPLIER)
+                        : baseResponsiveness;
+
+                    // Steering: compute desired velocity toward target
+                    const toTargetX = dragTargetPos.x - dragDot.x;
+                    const toTargetY = dragTargetPos.y - dragDot.y;
+
+                    // The velocity IS the movement toward target (weighted)
+                    vel.vx = toTargetX * responsiveness;
+                    vel.vy = toTargetY * responsiveness;
+                }
+            }
+
+            // Step 2: Apply velocities to positions (only dragged dot if frozen)
+            for (const [dotId, vel] of dotVelocities) {
+                if (isFrozen && dotId !== dragDotId) continue;
+
                 const dot = dots.find(d => d.id === dotId);
                 if (!dot) {
-                    thrownDots.delete(dotId);
+                    dotVelocities.delete(dotId);
                     continue;
                 }
 
-                // Apply velocity
-                let newX = dot.x + physics.vx;
-                let newY = dot.y + physics.vy;
+                dot.x += vel.vx;
+                dot.y += vel.vy;
+            }
 
-                // Bounce off screen edges
-                const width = window.innerWidth;
-                const height = window.innerHeight;
+            // Step 3: Boundary collisions (only for dragged dot if frozen)
+            for (const [dotId, vel] of dotVelocities) {
+                if (isFrozen && dotId !== dragDotId) continue;
 
-                if (newX - dot.radius < 0) {
-                    newX = dot.radius;
-                    physics.vx *= -0.7; // Bounce with energy loss
-                } else if (newX + dot.radius > width) {
-                    newX = width - dot.radius;
-                    physics.vx *= -0.7;
+                const dot = dots.find(d => d.id === dotId);
+                if (!dot) continue;
+
+                if (dot.x - dot.radius < 0) {
+                    dot.x = dot.radius;
+                    if (!isFrozen) vel.vx *= -0.7;
+                } else if (dot.x + dot.radius > width) {
+                    dot.x = width - dot.radius;
+                    if (!isFrozen) vel.vx *= -0.7;
                 }
 
-                if (newY - dot.radius < 0) {
-                    newY = dot.radius;
-                    physics.vy *= -0.7;
-                } else if (newY + dot.radius > height) {
-                    newY = height - dot.radius;
-                    physics.vy *= -0.7;
+                if (dot.y - dot.radius < 0) {
+                    dot.y = dot.radius;
+                    if (!isFrozen) vel.vy *= -0.7;
+                } else if (dot.y + dot.radius > height) {
+                    dot.y = height - dot.radius;
+                    if (!isFrozen) vel.vy *= -0.7;
                 }
+            }
 
-                // Check collision with other dots
-                for (const other of dots) {
-                    if (other.id === dotId) continue;
+            // Step 4: Collision resolution
+            if (isFrozen) {
+                // In freeze mode, only handle collisions for the dragged dot
+                // Other dots act as immovable obstacles
+                if (isDragging && dragDotId !== null) {
+                    const dragDot = dots.find(d => d.id === dragDotId);
+                    if (dragDot) {
+                        for (let iter = 0; iter < COLLISION_ITERATIONS; iter++) {
+                            for (const otherDot of dots) {
+                                if (otherDot.id === dragDotId) continue;
 
-                    // Skip if this collision pair was already processed
-                    const collisionKey = Math.min(dotId, other.id) + '-' + Math.max(dotId, other.id);
-                    if (processedCollisions.has(collisionKey)) continue;
+                                const dx = otherDot.x - dragDot.x;
+                                const dy = otherDot.y - dragDot.y;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                const minDist = dragDot.radius + otherDot.radius;
 
-                    const odx = newX - other.x;
-                    const ody = newY - other.y;
-                    const dist = Math.sqrt(odx * odx + ody * ody);
-                    const minDist = dot.radius + other.radius;
+                                if (dist < minDist && dist > 0) {
+                                    // Push dragged dot back (other dot is immovable)
+                                    const nx = dx / dist;
+                                    const ny = dy / dist;
+                                    const overlap = minDist - dist;
 
-                    if (dist < minDist && dist > 0) {
-                        // Mark this collision as processed
-                        processedCollisions.add(collisionKey);
+                                    dragDot.x -= nx * overlap;
+                                    dragDot.y -= ny * overlap;
 
-                        // Collision normal (from other to dot)
-                        const nx = odx / dist;
-                        const ny = ody / dist;
-
-                        // Get other dot's velocity (might be stationary or moving)
-                        let otherPhysics = thrownDots.get(other.id);
-                        const otherWasMoving = !!otherPhysics;
-                        if (!otherPhysics) {
-                            otherPhysics = { vx: 0, vy: 0 };
-                        }
-
-                        // Calculate masses based on radius (linear for more dramatic size differences)
-                        const m1 = dot.radius;
-                        const m2 = other.radius;
-                        const totalMass = m1 + m2;
-
-                        // Relative velocity
-                        const dvx = physics.vx - otherPhysics.vx;
-                        const dvy = physics.vy - otherPhysics.vy;
-
-                        // Relative velocity along collision normal
-                        const dvn = dvx * nx + dvy * ny;
-
-                        // Only resolve if dots are moving toward each other
-                        if (dvn < 0) {
-                            // Coefficient of restitution (bounciness)
-                            const restitution = 0.85;
-
-                            // 2D elastic collision velocity changes
-                            // v1' = v1 - (2*m2/(m1+m2)) * dvn * n
-                            // v2' = v2 + (2*m1/(m1+m2)) * dvn * n
-                            const coeffThis = (2 * m2 / totalMass) * dvn * (1 + restitution) / 2;
-                            const coeffOther = (2 * m1 / totalMass) * dvn * (1 + restitution) / 2;
-
-                            // Apply velocity changes
-                            physics.vx -= coeffThis * nx;
-                            physics.vy -= coeffThis * ny;
-
-                            const newOtherVx = otherPhysics.vx + coeffOther * nx;
-                            const newOtherVy = otherPhysics.vy + coeffOther * ny;
-
-                            // Apply impulse to other dot
-                            if (otherWasMoving) {
-                                otherPhysics.vx = newOtherVx;
-                                otherPhysics.vy = newOtherVy;
-                            } else {
-                                // Start the other dot moving
-                                thrownDots.set(other.id, {
-                                    vx: newOtherVx,
-                                    vy: newOtherVy
-                                });
+                                    // Also zero out velocity in that direction
+                                    const vel = dotVelocities.get(dragDotId);
+                                    if (vel) {
+                                        const velDotN = vel.vx * nx + vel.vy * ny;
+                                        if (velDotN > 0) {
+                                            vel.vx -= velDotN * nx;
+                                            vel.vy -= velDotN * ny;
+                                        }
+                                    }
+                                }
                             }
                         }
-
-                        // Separate the dots so they don't overlap
-                        const overlap = minDist - dist;
-                        const separationRatio = m2 / totalMass;
-                        newX += nx * overlap * separationRatio;
-                        newY += ny * overlap * separationRatio;
-
-                        // Move other dot too (proportional to mass)
-                        other.x -= nx * overlap * (1 - separationRatio);
-                        other.y -= ny * overlap * (1 - separationRatio);
                     }
                 }
+            } else {
+                // Normal physics: full collision resolution
+                for (let iter = 0; iter < COLLISION_ITERATIONS; iter++) {
+                    processedCollisions.clear();
 
-                dot.x = newX;
-                dot.y = newY;
+                    for (let i = 0; i < dots.length; i++) {
+                        const dotA = dots[i];
+                        const velA = dotVelocities.get(dotA.id) || { vx: 0, vy: 0 };
 
-                // Apply friction - larger dots have more inertia (less friction effect)
-                const mass = Math.sqrt(dot.radius / DEFAULT_RADIUS);
-                const friction = 1 - (1 - BASE_FRICTION) / mass;
-                physics.vx *= friction;
-                physics.vy *= friction;
+                        for (let j = i + 1; j < dots.length; j++) {
+                            const dotB = dots[j];
 
-                // Stop if velocity is very low
-                const speed = Math.sqrt(physics.vx * physics.vx + physics.vy * physics.vy);
-                if (speed < MIN_VELOCITY) {
-                    // Snap to grid when coming to rest
-                    const snapped = snapToGrid(dot.x, dot.y);
-                    if (!wouldOverlap(snapped.x, snapped.y, dot.radius, dot.id)) {
-                        dot.x = snapped.x;
-                        dot.y = snapped.y;
+                            // Skip if neither dot is moving (optimization)
+                            const velB = dotVelocities.get(dotB.id) || { vx: 0, vy: 0 };
+                            const aMoving = dotVelocities.has(dotA.id);
+                            const bMoving = dotVelocities.has(dotB.id);
+                            if (!aMoving && !bMoving) continue;
+
+                            const collisionKey = dotA.id + '-' + dotB.id;
+                            if (processedCollisions.has(collisionKey)) continue;
+                            processedCollisions.add(collisionKey);
+
+                            // Ensure both have velocity entries for collision resolution
+                            if (!dotVelocities.has(dotA.id)) {
+                                dotVelocities.set(dotA.id, { vx: 0, vy: 0 });
+                            }
+                            if (!dotVelocities.has(dotB.id)) {
+                                dotVelocities.set(dotB.id, { vx: 0, vy: 0 });
+                            }
+
+                            const velARef = dotVelocities.get(dotA.id);
+                            const velBRef = dotVelocities.get(dotB.id);
+
+                            resolveCollision(dotA, dotB, velARef, velBRef);
+                        }
                     }
-                    thrownDots.delete(dotId);
                 }
-
-                needsRender = true;
             }
 
-            if (needsRender) {
-                render();
+            // Step 5: Apply friction (skip if frozen, or for dragged/perpetual dots)
+            if (!isFrozen) {
+                for (const [dotId, vel] of dotVelocities) {
+                    if (dotId === dragDotId) continue; // Don't apply friction while dragging
+                    if (noFrictionDots.has(dotId)) continue; // Perpetual motion dots
+
+                    const dot = dots.find(d => d.id === dotId);
+                    if (!dot) continue;
+
+                    // Mass-based friction: heavier dots have more inertia
+                    const m = mass(dot);
+                    const baseFriction = getFriction();
+                    const friction = 1 - (1 - baseFriction) / Math.sqrt(m);
+                    vel.vx *= friction;
+                    vel.vy *= friction;
+
+                    // Stop if velocity is very low
+                    const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                    if (speed < MIN_VELOCITY) {
+                        // Snap to grid
+                        const snapped = snapToGrid(dot.x, dot.y);
+                        if (!wouldOverlap(snapped.x, snapped.y, dot.radius, dot.id)) {
+                            dot.x = snapped.x;
+                            dot.y = snapped.y;
+                        }
+                        dotVelocities.delete(dotId);
+                    }
+                }
             }
 
-            // Clear collision tracking for next frame
-            processedCollisions.clear();
+            // Step 6: Update trails for fast-moving dots
+            updateTrails();
 
-            if (thrownDots.size > 0) {
+            render();
+
+            // Continue loop if any dots are moving OR dragging is active
+            if (dotVelocities.size > 0 || isDragging) {
                 physicsAnimationId = requestAnimationFrame(physicsLoop);
             } else {
                 physicsAnimationId = null;
@@ -810,139 +1465,321 @@
             }
         }
 
-        // Global mouse move for dragging
-        svg.on('mousemove', function(event) {
-            if (!dragDot) return;
-
-            const [mx, my] = d3.pointer(event, svg.node());
-            const dx = mx - dragStartPos.x;
-            const dy = my - dragStartPos.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Start dragging if moved past threshold
-            if (!isDragging && distance > DRAG_THRESHOLD) {
-                isDragging = true;
-                clearHoldTimer(); // Cancel shrink
-                svg.classed('dragging', true);
-                // Start animation loop
-                dragAnimationId = requestAnimationFrame(animateDrag);
-            }
-
-            if (isDragging) {
-                // Track previous target for velocity calculation
-                dragPrevTargetPos = dragTargetPos ? { ...dragTargetPos } : null;
-
-                // Update target position (the dot will animate toward it)
-                dragTargetPos = {
-                    x: dragOriginalPos.x + dx,
-                    y: dragOriginalPos.y + dy
-                };
-            }
-        });
-
-        // Global mouse up to end drag
-        svg.on('mouseup', function(event) {
-            finalizeDrag();
-        });
-
-        function finalizeDrag() {
-            if (isDragging && dragDot) {
-                // Calculate throw velocity from recent movement
-                let vx = 0, vy = 0;
-                if (velocityHistory.length >= 2) {
-                    // Average recent velocities
-                    for (const v of velocityHistory) {
-                        vx += v.x;
-                        vy += v.y;
-                    }
-                    vx /= velocityHistory.length;
-                    vy /= velocityHistory.length;
-
-                    // Keep the same velocity as during drag - no change
-                    const throwMultiplier = 1.0;
-                    vx *= throwMultiplier;
-                    vy *= throwMultiplier;
-                }
-
-                const speed = Math.sqrt(vx * vx + vy * vy);
-
-                // If thrown with enough velocity, start physics simulation
-                if (speed > MIN_VELOCITY * 2) {
-                    thrownDots.set(dragDot.id, { vx, vy });
-                    startPhysicsLoop();
-                } else {
-                    // Not enough velocity - snap to grid
-                    const snapped = snapToGrid(dragDot.x, dragDot.y);
-
-                    if (!wouldOverlap(snapped.x, snapped.y, dragDot.radius, dragDot.id)) {
-                        dragDot.x = snapped.x;
-                        dragDot.y = snapped.y;
-                    } else {
-                        // Try nearby grid positions
-                        const offsets = [
-                            [GRID_SIZE, 0], [-GRID_SIZE, 0], [0, GRID_SIZE], [0, -GRID_SIZE],
-                            [GRID_SIZE, GRID_SIZE], [-GRID_SIZE, GRID_SIZE],
-                            [GRID_SIZE, -GRID_SIZE], [-GRID_SIZE, -GRID_SIZE]
-                        ];
-
-                        for (const [ox, oy] of offsets) {
-                            const testX = snapped.x + ox;
-                            const testY = snapped.y + oy;
-                            if (!wouldOverlap(testX, testY, dragDot.radius, dragDot.id)) {
-                                dragDot.x = testX;
-                                dragDot.y = testY;
-                                break;
-                            }
-                        }
-                    }
-                    render();
-                }
-            }
-
-            isDragging = false;
-            dragDot = null;
-            dragStartPos = null;
-            dragOriginalPos = null;
-            dragTargetPos = null;
-            dragPrevTargetPos = null;
-            velocityHistory = [];
-            dragKnockedDots.clear();
-            if (dragAnimationId) {
-                cancelAnimationFrame(dragAnimationId);
-                dragAnimationId = null;
-            }
-            svg.classed('dragging', false);
-        }
-
-        // Background double-click handler - creates dots
+        // ========== BACKGROUND HANDLERS ==========
         background.on('dblclick', function(event) {
             const [x, y] = d3.pointer(event);
             createDot(x, y);
         });
 
+        // Touch support for background (double-tap to create)
+        background.on('touchstart', function(event) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const rect = svg.node().getBoundingClientRect();
+            const tx = touch.clientX - rect.left;
+            const ty = touch.clientY - rect.top;
+
+            const now = Date.now();
+            if (lastTapTime && now - lastTapTime < DOUBLE_TAP_THRESHOLD && lastTapPos) {
+                const dist = Math.sqrt((touch.clientX - lastTapPos.x) ** 2 + (touch.clientY - lastTapPos.y) ** 2);
+                if (dist < DOUBLE_TAP_DISTANCE) {
+                    // Double-tap detected - create dot
+                    lastTapTime = 0;
+                    lastTapPos = null;
+                    createDot(tx, ty);
+                    return;
+                }
+            }
+            lastTapTime = now;
+            lastTapPos = { x: touch.clientX, y: touch.clientY };
+        });
+
+        // ========== UI CONTROLS ==========
+
+        // Controls panel toggle
+        const controlsToggle = document.getElementById('controlsToggle');
+        const controlsPanel = document.getElementById('controlsPanel');
+        controlsToggle.addEventListener('click', () => {
+            controlsPanel.classList.toggle('open');
+        });
+
         // Dot count slider
         const countSlider = document.getElementById('countSlider');
         const countValue = document.getElementById('countValue');
-
         countSlider.addEventListener('input', () => {
             countValue.textContent = countSlider.value;
         });
 
-        // Toggle grid visibility
-        const gridBtn = document.getElementById('gridBtn');
-        let gridVisible = false;
+        // Modifier toggles (work alongside keyboard)
+        const boostToggle = document.getElementById('boostToggle');
+        const perpetualToggle = document.getElementById('perpetualToggle');
 
-        gridBtn.addEventListener('click', () => {
-            gridVisible = !gridVisible;
-            gridGroup.style('display', gridVisible ? 'block' : 'none');
-            gridBtn.textContent = gridVisible ? 'Hide Grid' : 'Show Grid';
-            gridBtn.classList.toggle('active', gridVisible);
+        boostToggle.addEventListener('click', () => {
+            isBoostKeyHeld = !isBoostKeyHeld;
+            boostToggle.classList.toggle('active', isBoostKeyHeld);
+            boostIndicator.classList.toggle('active', isBoostKeyHeld);
+        });
+
+        perpetualToggle.addEventListener('click', () => {
+            isNoFrictionKeyHeld = !isNoFrictionKeyHeld;
+            perpetualToggle.classList.toggle('active', isNoFrictionKeyHeld);
+            perpetualIndicator.classList.toggle('active', isNoFrictionKeyHeld);
+        });
+
+        // Physics sliders
+        const frictionSlider = document.getElementById('frictionSlider');
+        const frictionValue = document.getElementById('frictionValue');
+        frictionSlider.addEventListener('input', () => {
+            frictionValue.textContent = frictionSlider.value;
+        });
+
+        const bounceSlider = document.getElementById('bounceSlider');
+        const bounceValue = document.getElementById('bounceValue');
+        bounceSlider.addEventListener('input', () => {
+            bounceValue.textContent = bounceSlider.value;
+        });
+
+        // Helper to get current physics values
+        function getFriction() {
+            return parseFloat(frictionSlider.value) / 100;
+        }
+
+        function getRestitution() {
+            return parseFloat(bounceSlider.value) / 100;
+        }
+
+        // Freeze toggle
+        const freezeToggle = document.getElementById('freezeToggle');
+        const freezeIndicator = document.getElementById('freezeIndicator');
+        freezeToggle.addEventListener('change', () => {
+            isFrozen = freezeToggle.checked;
+            freezeIndicator.classList.toggle('active', isFrozen);
+            if (isFrozen) {
+                // Stop all dots when freezing
+                dotVelocities.clear();
+                noFrictionDots.clear();
+                dotTrails.clear();
+                trailGroup.selectAll('*').remove();
+            }
+        });
+
+        // Grid toggle
+        const gridToggle = document.getElementById('gridToggle');
+        gridToggle.addEventListener('change', () => {
+            gridGroup.style('display', gridToggle.checked ? 'block' : 'none');
+        });
+
+        // Theme selector
+        const themeSelect = document.getElementById('themeSelect');
+
+        function applyTheme(themeName) {
+            const theme = themes[themeName];
+            if (!theme) return;
+
+            currentTheme = themeName;
+
+            // Update background
+            document.body.style.background = theme.background;
+            background.attr('fill', theme.background);
+
+            // Update existing dots
+            dotsGroup.selectAll('circle')
+                .attr('fill', theme.dotFill)
+                .attr('stroke', theme.dotStroke);
+
+            // Update UI elements that need theme colors
+            document.querySelectorAll('#modifiers .modifier').forEach(el => {
+                el.style.background = theme.ui === '#ffffff' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)';
+                el.style.color = theme.ui === '#ffffff' ? '#000' : '#fff';
+            });
+
+            freezeIndicator.style.background = theme.ui === '#ffffff' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)';
+            freezeIndicator.style.color = theme.ui === '#ffffff' ? '#000' : '#fff';
+
+            // Update help button
+            const helpBtn = document.getElementById('helpBtn');
+            helpBtn.style.borderColor = theme.ui;
+            helpBtn.style.color = theme.ui;
+        }
+
+        themeSelect.addEventListener('change', () => {
+            applyTheme(themeSelect.value);
+        });
+
+        // Stop all dots
+        document.getElementById('stopAllBtn').addEventListener('click', () => {
+            for (const [dotId, vel] of dotVelocities) {
+                const dot = dots.find(d => d.id === dotId);
+                if (dot) {
+                    const snapped = snapToGrid(dot.x, dot.y);
+                    if (!wouldOverlap(snapped.x, snapped.y, dot.radius, dot.id)) {
+                        dot.x = snapped.x;
+                        dot.y = snapped.y;
+                    }
+                }
+            }
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            render();
+        });
+
+        // Save state
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const state = {
+                dots: dots.map(d => ({ id: d.id, x: d.x, y: d.y, radius: d.radius })),
+                nextId: nextId,
+                theme: currentTheme,
+                settings: {
+                    dotsPerClick: countSlider.value,
+                    friction: frictionSlider.value,
+                    bounciness: bounceSlider.value,
+                    showGrid: gridToggle.checked
+                }
+            };
+            localStorage.setItem('dotsAppState', JSON.stringify(state));
+
+            // Visual feedback
+            const btn = document.getElementById('saveBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Saved!';
+            setTimeout(() => { btn.textContent = originalText; }, 1000);
+        });
+
+        // Load state
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            const saved = localStorage.getItem('dotsAppState');
+            if (!saved) {
+                const btn = document.getElementById('loadBtn');
+                const originalText = btn.textContent;
+                btn.textContent = 'No save found';
+                setTimeout(() => { btn.textContent = originalText; }, 1000);
+                return;
+            }
+
+            try {
+                const state = JSON.parse(saved);
+
+                // Stop all current motion
+                dotVelocities.clear();
+                noFrictionDots.clear();
+                dotTrails.clear();
+
+                // Restore dots
+                dots = state.dots || [];
+                nextId = state.nextId || (dots.length > 0 ? Math.max(...dots.map(d => d.id)) + 1 : 1);
+
+                // Restore theme
+                if (state.theme && themes[state.theme]) {
+                    themeSelect.value = state.theme;
+                    applyTheme(state.theme);
+                }
+
+                // Restore settings
+                if (state.settings) {
+                    if (state.settings.dotsPerClick) {
+                        countSlider.value = state.settings.dotsPerClick;
+                        countValue.textContent = state.settings.dotsPerClick;
+                    }
+                    if (state.settings.friction) {
+                        frictionSlider.value = state.settings.friction;
+                        frictionValue.textContent = state.settings.friction;
+                    }
+                    if (state.settings.bounciness) {
+                        bounceSlider.value = state.settings.bounciness;
+                        bounceValue.textContent = state.settings.bounciness;
+                    }
+                    if (state.settings.showGrid !== undefined) {
+                        gridToggle.checked = state.settings.showGrid;
+                        gridGroup.style('display', state.settings.showGrid ? 'block' : 'none');
+                    }
+                }
+
+                render();
+
+                // Visual feedback
+                const btn = document.getElementById('loadBtn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Loaded!';
+                setTimeout(() => { btn.textContent = originalText; }, 1000);
+            } catch (e) {
+                console.error('Failed to load state:', e);
+            }
         });
 
         // Clear all
         document.getElementById('clearBtn').addEventListener('click', () => {
             dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
             render();
+        });
+
+        // ========== KEYBOARD CONTROLS ==========
+        const boostIndicator = document.getElementById('boostIndicator');
+        const perpetualIndicator = document.getElementById('perpetualIndicator');
+        const helpModal = document.getElementById('helpModal');
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'a' || e.key === 'A') {
+                isBoostKeyHeld = true;
+                boostIndicator.classList.add('active');
+                document.getElementById('boostToggle').classList.add('active');
+            }
+            if (e.key === 'c' || e.key === 'C') {
+                isNoFrictionKeyHeld = true;
+                perpetualIndicator.classList.add('active');
+                document.getElementById('perpetualToggle').classList.add('active');
+            }
+            if (e.key === 'f' || e.key === 'F') {
+                isFrozen = !isFrozen;
+                freezeToggle.checked = isFrozen;
+                freezeIndicator.classList.toggle('active', isFrozen);
+                if (isFrozen) {
+                    dotVelocities.clear();
+                    noFrictionDots.clear();
+                    dotTrails.clear();
+                    trailGroup.selectAll('*').remove();
+                }
+            }
+            if (e.key === '?') {
+                helpModal.classList.toggle('visible');
+            }
+            if (e.key === 'Escape') {
+                helpModal.classList.remove('visible');
+                controlsPanel.classList.remove('open');
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'a' || e.key === 'A') {
+                isBoostKeyHeld = false;
+                boostIndicator.classList.remove('active');
+                document.getElementById('boostToggle').classList.remove('active');
+            }
+            if (e.key === 'c' || e.key === 'C') {
+                isNoFrictionKeyHeld = false;
+                perpetualIndicator.classList.remove('active');
+                document.getElementById('perpetualToggle').classList.remove('active');
+            }
+        });
+
+        // Help modal controls
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            helpModal.classList.toggle('visible');
+        });
+
+        document.getElementById('closeHelp').addEventListener('click', () => {
+            helpModal.classList.remove('visible');
+        });
+
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.remove('visible');
+            }
         });
 
         // Initial render
