@@ -406,6 +406,9 @@
                 <dt><kbd>F</kbd></dt>
                 <dd>Toggle freeze mode</dd>
 
+                <dt><kbd>S</kbd></dt>
+                <dd>Stop all dots</dd>
+
                 <dt><kbd>?</kbd></dt>
                 <dd>Toggle this help</dd>
 
@@ -629,6 +632,7 @@
         let isBoostKeyHeld = false;
         let isNoFrictionKeyHeld = false;
         let noFrictionDots = new Set(); // Dots that should never decelerate
+        let boostedDots = new Set(); // Dots that were thrown with boost (show trails)
 
         // Physics loop
         let physicsAnimationId = null;
@@ -819,10 +823,16 @@
         function updateTrails() {
             const theme = themes[currentTheme];
 
-            // Update trail points for fast-moving dots
-            for (const [dotId, vel] of dotVelocities) {
+            // Update trail points for boosted dots only
+            for (const dotId of boostedDots) {
+                const vel = dotVelocities.get(dotId);
                 const dot = dots.find(d => d.id === dotId);
-                if (!dot) continue;
+                if (!dot || !vel) {
+                    // Dot stopped or was removed
+                    boostedDots.delete(dotId);
+                    dotTrails.delete(dotId);
+                    continue;
+                }
 
                 const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
 
@@ -843,10 +853,14 @@
                     if (trail.length > TRAIL_MAX_LENGTH) {
                         trail.pop();
                     }
+                } else {
+                    // Dot dropped below boost speed - no longer boosted
+                    boostedDots.delete(dotId);
+                    dotTrails.delete(dotId);
                 }
             }
 
-            // Fade all trails
+            // Fade trail points for visual effect (while dot is still fast)
             for (const [dotId, trail] of dotTrails) {
                 for (let i = trail.length - 1; i >= 0; i--) {
                     trail[i].opacity -= TRAIL_FADE_RATE;
@@ -854,9 +868,6 @@
                     if (trail[i].opacity <= 0) {
                         trail.splice(i, 1);
                     }
-                }
-                if (trail.length === 0) {
-                    dotTrails.delete(dotId);
                 }
             }
 
@@ -1044,6 +1055,7 @@
                 dots = dots.filter(d => d.id !== id);
                 dotVelocities.delete(id);
                 noFrictionDots.delete(id);
+                boostedDots.delete(id);
                 dotTrails.delete(id);
             } else {
                 dot.radius = newRadius;
@@ -1232,6 +1244,13 @@
                 // The dot already has velocity from steering
                 const vel = dotVelocities.get(dragDotId);
                 if (vel) {
+                    // Apply boost multiplier to throw velocity if boost is active
+                    if (isBoostKeyHeld) {
+                        vel.vx *= BOOST_MULTIPLIER;
+                        vel.vy *= BOOST_MULTIPLIER;
+                        boostedDots.add(dragDotId);
+                    }
+
                     const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
                     if (speed < MIN_VELOCITY) {
                         // If barely moving, snap to grid and stop
@@ -1245,6 +1264,7 @@
                         }
                         dotVelocities.delete(dragDotId);
                         noFrictionDots.delete(dragDotId);
+                        boostedDots.delete(dragDotId);
                         render();
                     } else if (isNoFrictionKeyHeld) {
                         // Mark this dot as no-friction (perpetual motion)
@@ -1558,6 +1578,7 @@
                 // Stop all dots when freezing
                 dotVelocities.clear();
                 noFrictionDots.clear();
+                boostedDots.clear();
                 dotTrails.clear();
                 trailGroup.selectAll('*').remove();
             }
@@ -1620,6 +1641,7 @@
             }
             dotVelocities.clear();
             noFrictionDots.clear();
+                boostedDots.clear();
             dotTrails.clear();
             trailGroup.selectAll('*').remove();
             render();
@@ -1664,6 +1686,7 @@
                 // Stop all current motion
                 dotVelocities.clear();
                 noFrictionDots.clear();
+                boostedDots.clear();
                 dotTrails.clear();
 
                 // Restore dots
@@ -1713,6 +1736,7 @@
             dots = [];
             dotVelocities.clear();
             noFrictionDots.clear();
+                boostedDots.clear();
             dotTrails.clear();
             trailGroup.selectAll('*').remove();
             render();
@@ -1741,9 +1765,29 @@
                 if (isFrozen) {
                     dotVelocities.clear();
                     noFrictionDots.clear();
+                boostedDots.clear();
                     dotTrails.clear();
                     trailGroup.selectAll('*').remove();
                 }
+            }
+            if (e.key === 's' || e.key === 'S') {
+                // Stop all dots
+                for (const [dotId, vel] of dotVelocities) {
+                    const dot = dots.find(d => d.id === dotId);
+                    if (dot) {
+                        const snapped = snapToGrid(dot.x, dot.y);
+                        if (!wouldOverlap(snapped.x, snapped.y, dot.radius, dot.id)) {
+                            dot.x = snapped.x;
+                            dot.y = snapped.y;
+                        }
+                    }
+                }
+                dotVelocities.clear();
+                noFrictionDots.clear();
+                boostedDots.clear();
+                dotTrails.clear();
+                trailGroup.selectAll('*').remove();
+                render();
             }
             if (e.key === '?') {
                 helpModal.classList.toggle('visible');
