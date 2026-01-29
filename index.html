@@ -400,6 +400,55 @@
             color: rgba(255,255,255,0.6);
             margin-top: 4px;
         }
+
+        #golfHUD {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #golfHUD.active {
+            opacity: 1;
+        }
+
+        #golfHUD .golf-hole {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        #golfHUD .golf-strokes {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+
+        #golfHUD .golf-par {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
+
+        #golfHUD .golf-total {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 8px;
+        }
+
+        #golfHUD .golf-complete {
+            font-size: 18px;
+            font-weight: bold;
+            color: #82ccdd;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -409,6 +458,14 @@
         <div class="score-label">Chain</div>
         <div class="score-current" id="chainScoreValue">0</div>
         <div class="score-best" id="chainBestValue"></div>
+    </div>
+
+    <div id="golfHUD">
+        <div class="golf-hole" id="golfHoleLabel">Hole 1</div>
+        <div class="golf-strokes" id="golfStrokesValue">0</div>
+        <div class="golf-par" id="golfParLabel">Par 3</div>
+        <div class="golf-total" id="golfTotalLabel"></div>
+        <div class="golf-complete" id="golfCompleteLabel"></div>
     </div>
 
     <div id="modifiers">
@@ -545,6 +602,13 @@
                 </div>
                 <button class="action-btn" id="chainStartBtn" style="display:none">Start Chain</button>
                 <button class="action-btn" id="chainResetBtn" style="display:none">Reset Round</button>
+
+                <div class="control-row" style="margin-top: 12px;">
+                    <label for="golfToggle">Golf</label>
+                    <input type="checkbox" id="golfToggle">
+                </div>
+                <button class="action-btn" id="golfStartBtn" style="display:none">Start Hole</button>
+                <button class="action-btn" id="golfNextBtn" style="display:none">Next Hole</button>
             </div>
 
             <div class="control-section">
@@ -725,6 +789,16 @@
         let chainReactionStartDotId = null;
         let chainWaitingForThrow = false;
 
+        // Golf game state
+        let golfMode = false;
+        let golfBallId = null;
+        let golfTarget = null;           // {x, y, radius}
+        let golfStrokes = 0;
+        let golfPar = 3;
+        let golfHoleNumber = 1;
+        let golfTotalScore = 0;
+        let golfHoleComplete = false;
+
         // ========== UNIFIED MASS FUNCTION ==========
         // Area-based mass: (radius / DEFAULT_RADIUS)^2
         function mass(dot) {
@@ -768,6 +842,9 @@
             }
         }
         drawGrid();
+
+        // Golf target group (behind everything)
+        const golfTargetGroup = svg.append('g').attr('class', 'golf-target');
 
         // Trail group (behind dots)
         const trailGroup = svg.append('g').attr('class', 'trails');
@@ -1041,6 +1118,181 @@
             bestEl.textContent = parts.join(' | ');
         }
 
+        // ========== GOLF GAME ==========
+        function startGolfHole() {
+            // Clear any existing dots
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const margin = 100;
+
+            // Place target randomly on right side
+            golfTarget = {
+                x: width - margin - Math.random() * (width / 3),
+                y: margin + Math.random() * (height - margin * 2),
+                radius: 40
+            };
+
+            // Calculate par based on distance from start
+            const startX = margin;
+            const startY = height / 2;
+            const dist = Math.sqrt((golfTarget.x - startX) ** 2 + (golfTarget.y - startY) ** 2);
+            if (dist < 300) golfPar = 2;
+            else if (dist < 500) golfPar = 3;
+            else golfPar = 4;
+
+            // Create ball at start position
+            const ballDot = {
+                id: nextId++,
+                x: startX,
+                y: startY,
+                radius: DEFAULT_RADIUS
+            };
+            dots.push(ballDot);
+            golfBallId = ballDot.id;
+
+            golfStrokes = 0;
+            golfHoleComplete = false;
+
+            renderGolfTarget();
+            updateGolfHUD();
+            render();
+
+            // Show/hide buttons
+            document.getElementById('golfStartBtn').style.display = 'none';
+            document.getElementById('golfNextBtn').style.display = 'none';
+        }
+
+        function endGolfHole() {
+            golfHoleComplete = true;
+            const diff = golfStrokes - golfPar;
+            golfTotalScore += diff;
+
+            updateGolfHUD();
+
+            // Show next hole button
+            document.getElementById('golfNextBtn').style.display = 'block';
+        }
+
+        function nextGolfHole() {
+            golfHoleNumber++;
+            startGolfHole();
+        }
+
+        function resetGolf() {
+            golfBallId = null;
+            golfTarget = null;
+            golfStrokes = 0;
+            golfPar = 3;
+            golfHoleNumber = 1;
+            golfTotalScore = 0;
+            golfHoleComplete = false;
+
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            golfTargetGroup.selectAll('*').remove();
+
+            render();
+            updateGolfHUD();
+        }
+
+        function checkGolfWin() {
+            if (!golfMode || !golfBallId || !golfTarget || golfHoleComplete) return;
+
+            const ball = dots.find(d => d.id === golfBallId);
+            if (!ball) return;
+
+            // Ball must be stopped (not in velocities map)
+            if (dotVelocities.has(golfBallId)) return;
+
+            // Check if ball center is within target
+            const dx = ball.x - golfTarget.x;
+            const dy = ball.y - golfTarget.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= golfTarget.radius) {
+                endGolfHole();
+            }
+        }
+
+        function renderGolfTarget() {
+            golfTargetGroup.selectAll('*').remove();
+            if (!golfTarget) return;
+
+            // Outer ring
+            golfTargetGroup.append('circle')
+                .attr('cx', golfTarget.x)
+                .attr('cy', golfTarget.y)
+                .attr('r', golfTarget.radius)
+                .attr('fill', 'rgba(255, 255, 255, 0.1)')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 3)
+                .attr('stroke-dasharray', '10,5');
+
+            // Inner ring
+            golfTargetGroup.append('circle')
+                .attr('cx', golfTarget.x)
+                .attr('cy', golfTarget.y)
+                .attr('r', golfTarget.radius * 0.5)
+                .attr('fill', 'none')
+                .attr('stroke', 'rgba(255,255,255,0.5)')
+                .attr('stroke-width', 2);
+
+            // Center dot
+            golfTargetGroup.append('circle')
+                .attr('cx', golfTarget.x)
+                .attr('cy', golfTarget.y)
+                .attr('r', 5)
+                .attr('fill', '#fff');
+        }
+
+        function updateGolfHUD() {
+            const holeLabel = document.getElementById('golfHoleLabel');
+            const strokesValue = document.getElementById('golfStrokesValue');
+            const parLabel = document.getElementById('golfParLabel');
+            const totalLabel = document.getElementById('golfTotalLabel');
+            const completeLabel = document.getElementById('golfCompleteLabel');
+
+            if (!holeLabel) return;
+
+            holeLabel.textContent = 'Hole ' + golfHoleNumber;
+            strokesValue.textContent = golfStrokes;
+            parLabel.textContent = 'Par ' + golfPar;
+
+            if (golfTotalScore === 0) {
+                totalLabel.textContent = '';
+            } else if (golfTotalScore > 0) {
+                totalLabel.textContent = 'Total: +' + golfTotalScore;
+            } else {
+                totalLabel.textContent = 'Total: ' + golfTotalScore;
+            }
+
+            if (golfHoleComplete) {
+                const diff = golfStrokes - golfPar;
+                let msg = '';
+                if (diff === -2) msg = 'Eagle!';
+                else if (diff === -1) msg = 'Birdie!';
+                else if (diff === 0) msg = 'Par';
+                else if (diff === 1) msg = 'Bogey';
+                else if (diff === 2) msg = 'Double Bogey';
+                else if (diff > 2) msg = '+' + diff;
+                else msg = diff.toString();
+                completeLabel.textContent = msg;
+            } else {
+                completeLabel.textContent = '';
+            }
+        }
+
         // ========== RENDER ==========
         function render() {
             const circles = dotsGroup.selectAll('circle')
@@ -1073,6 +1325,9 @@
 
         // ========== DOT CREATION ==========
         function createDot(x, y) {
+            // Disable dot creation in golf mode
+            if (golfMode) return;
+
             const count = parseInt(document.getElementById('countSlider').value, 10);
 
             if (count === 1) {
@@ -1409,6 +1664,12 @@
                         document.getElementById('chainStartBtn').textContent = 'Start Chain';
                     }
 
+                    // Golf: count strokes when ball is thrown
+                    if (golfMode && golfBallId !== null && dragDotId === golfBallId && !golfHoleComplete) {
+                        golfStrokes++;
+                        updateGolfHUD();
+                    }
+
                     const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
                     if (speed < MIN_VELOCITY) {
                         // If barely moving, snap to grid and stop
@@ -1620,6 +1881,11 @@
                             dot.y = snapped.y;
                         }
                         dotVelocities.delete(dotId);
+
+                        // Golf: check if ball stopped in target
+                        if (golfMode && dotId === golfBallId && !golfHoleComplete) {
+                            checkGolfWin();
+                        }
                     }
                 }
             }
@@ -1763,7 +2029,14 @@
             chainStartBtn.style.display = chainReactionMode ? 'block' : 'none';
             chainResetBtn.style.display = chainReactionMode ? 'block' : 'none';
 
-            if (!chainReactionMode) {
+            if (chainReactionMode) {
+                // Disable golf mode
+                const golfToggleEl = document.getElementById('golfToggle');
+                if (golfToggleEl.checked) {
+                    golfToggleEl.checked = false;
+                    golfToggleEl.dispatchEvent(new Event('change'));
+                }
+            } else {
                 chainReactionActive = false;
                 chainReactionScore = 0;
                 chainReactionStartDotId = null;
@@ -1785,6 +2058,40 @@
             chainWaitingForThrow = false;
             chainStartBtn.textContent = 'Start Chain';
             resetChainReaction();
+        });
+
+        // Golf mode
+        const golfToggle = document.getElementById('golfToggle');
+        const golfStartBtn = document.getElementById('golfStartBtn');
+        const golfNextBtn = document.getElementById('golfNextBtn');
+        const golfHUD = document.getElementById('golfHUD');
+
+        golfToggle.addEventListener('change', () => {
+            golfMode = golfToggle.checked;
+            golfHUD.classList.toggle('active', golfMode);
+            golfStartBtn.style.display = golfMode ? 'block' : 'none';
+
+            if (golfMode) {
+                // Disable chain reaction mode
+                if (chainReactionToggle.checked) {
+                    chainReactionToggle.checked = false;
+                    chainReactionToggle.dispatchEvent(new Event('change'));
+                }
+            } else {
+                resetGolf();
+                golfNextBtn.style.display = 'none';
+            }
+        });
+
+        golfStartBtn.addEventListener('click', () => {
+            if (!golfHoleComplete && golfBallId !== null) return; // Already playing
+            startGolfHole();
+            golfStartBtn.style.display = 'none';
+        });
+
+        golfNextBtn.addEventListener('click', () => {
+            nextGolfHole();
+            golfNextBtn.style.display = 'none';
         });
 
         // Grid toggle
