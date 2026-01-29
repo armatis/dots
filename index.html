@@ -13,7 +13,7 @@
         }
 
         body {
-            background: #be5504;
+            background: #0a3d62;
             overflow: hidden;
             width: 100vw;
             height: 100vh;
@@ -188,7 +188,7 @@
 
         .action-btn:hover {
             background: #000;
-            color: #be5504;
+            color: #82ccdd;
         }
 
         .action-btn.danger {
@@ -288,7 +288,7 @@
 
         #helpBtn:hover {
             background: #000;
-            color: #be5504;
+            color: #82ccdd;
         }
 
         #helpModal {
@@ -364,10 +364,52 @@
         #closeHelp:hover {
             background: #333;
         }
+
+        #chainScoreHUD {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #chainScoreHUD.active {
+            opacity: 1;
+        }
+
+        #chainScoreHUD .score-current {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+
+        #chainScoreHUD .score-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        #chainScoreHUD .score-best {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
     <svg id="canvas"></svg>
+
+    <div id="chainScoreHUD">
+        <div class="score-label">Chain</div>
+        <div class="score-current" id="chainScoreValue">0</div>
+        <div class="score-best" id="chainBestValue"></div>
+    </div>
 
     <div id="modifiers">
         <div id="boostIndicator" class="modifier">BOOST</div>
@@ -414,6 +456,9 @@
 
                 <dt><kbd>Esc</kbd></dt>
                 <dd>Close panels</dd>
+
+                <dt>Chain Reaction</dt>
+                <dd>Enable in ⚙, place dots, click Start Chain, throw</dd>
 
                 <dt>Settings</dt>
                 <dd>Click ⚙ for more options</dd>
@@ -480,11 +525,26 @@
                         <option value="orange">Orange</option>
                         <option value="dark">Dark</option>
                         <option value="light">Light</option>
-                        <option value="ocean">Ocean</option>
+                        <option value="ocean" selected>Ocean</option>
                         <option value="forest">Forest</option>
                         <option value="sunset">Sunset</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Game</h3>
+                <div class="control-row">
+                    <label for="chainReactionToggle">Chain Reaction</label>
+                    <input type="checkbox" id="chainReactionToggle">
+                </div>
+                <div class="control-row" id="chainThresholdRow" style="display:none">
+                    <label for="chainThresholdSlider">Impact threshold</label>
+                    <input type="range" id="chainThresholdSlider" min="2" max="20" value="8" step="1">
+                    <span class="value" id="chainThresholdValue">8</span>
+                </div>
+                <button class="action-btn" id="chainStartBtn" style="display:none">Start Chain</button>
+                <button class="action-btn" id="chainResetBtn" style="display:none">Reset Round</button>
             </div>
 
             <div class="control-section">
@@ -610,7 +670,7 @@
                 ui: '#ffffff'
             }
         };
-        let currentTheme = 'orange';
+        let currentTheme = 'ocean';
 
         // State
         let dots = [];
@@ -656,6 +716,15 @@
         const TRAIL_FADE_RATE = 0.05; // How fast trails fade
         let dotTrails = new Map(); // dotId -> [{x, y, opacity, radius}]
 
+        // Chain Reaction game state
+        const CHAIN_IMPACT_THRESHOLD = 8;
+        let chainReactionMode = false;
+        let chainReactionActive = false;
+        let chainReactionScore = 0;
+        let chainReactionBest = 0;
+        let chainReactionStartDotId = null;
+        let chainWaitingForThrow = false;
+
         // ========== UNIFIED MASS FUNCTION ==========
         // Area-based mass: (radius / DEFAULT_RADIUS)^2
         function mass(dot) {
@@ -671,7 +740,7 @@
         const background = svg.append('rect')
             .attr('width', window.innerWidth)
             .attr('height', window.innerHeight)
-            .attr('fill', '#be5504');
+            .attr('fill', '#0a3d62');
 
         // Grid group (hidden by default)
         const gridGroup = svg.append('g')
@@ -804,6 +873,28 @@
                 velA.vy -= (impulse / mA) * ny;
                 velB.vx += (impulse / mB) * nx;
                 velB.vy += (impulse / mB) * ny;
+
+                // Chain Reaction: propagate boost on hard collision
+                if (chainReactionMode && chainReactionActive) {
+                    const impactSpeed = Math.abs(relVelNormal);
+                    const threshold = getChainThreshold();
+
+                    if (impactSpeed >= threshold) {
+                        const aIsBoosted = boostedDots.has(dotA.id);
+                        const bIsBoosted = boostedDots.has(dotB.id);
+
+                        if (aIsBoosted && !bIsBoosted) {
+                            boostedDots.add(dotB.id);
+                            chainReactionScore++;
+                            updateChainScoreDisplay();
+                        }
+                        if (bIsBoosted && !aIsBoosted) {
+                            boostedDots.add(dotA.id);
+                            chainReactionScore++;
+                            updateChainScoreDisplay();
+                        }
+                    }
+                }
             }
 
             // Positional separation (mass-proportional)
@@ -893,6 +984,61 @@
                 .attr('fill', theme.dotFill)
                 .attr('opacity', d => d.opacity)
                 .attr('stroke', 'none');
+        }
+
+        // ========== CHAIN REACTION GAME ==========
+        function getChainThreshold() {
+            const slider = document.getElementById('chainThresholdSlider');
+            return slider ? parseFloat(slider.value) : CHAIN_IMPACT_THRESHOLD;
+        }
+
+        function startChainReactionRound(startDotId) {
+            chainReactionActive = true;
+            chainReactionScore = 1; // The thrown dot counts
+            chainReactionStartDotId = startDotId;
+            updateChainScoreDisplay();
+        }
+
+        function endChainReactionRound() {
+            chainReactionActive = false;
+            if (chainReactionScore > chainReactionBest) {
+                chainReactionBest = chainReactionScore;
+            }
+            updateChainScoreDisplay();
+            chainReactionStartDotId = null;
+        }
+
+        function resetChainReaction() {
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+
+            chainReactionActive = false;
+            chainReactionScore = 0;
+            chainReactionStartDotId = null;
+            updateChainScoreDisplay();
+            render();
+        }
+
+        function updateChainScoreDisplay() {
+            const scoreEl = document.getElementById('chainScoreValue');
+            const bestEl = document.getElementById('chainBestValue');
+            if (!scoreEl) return;
+
+            scoreEl.textContent = chainReactionScore;
+
+            const parts = [];
+            if (chainReactionBest > 0) {
+                parts.push('Best: ' + chainReactionBest);
+            }
+            if (chainReactionActive) {
+                parts.push(dots.length + ' dots');
+            } else if (chainReactionScore > 0) {
+                parts.push('Hit ' + chainReactionScore + '/' + dots.length);
+            }
+            bestEl.textContent = parts.join(' | ');
         }
 
         // ========== RENDER ==========
@@ -1251,6 +1397,18 @@
                         boostedDots.add(dragDotId);
                     }
 
+                    // Chain Reaction: auto-boost and start round on next throw
+                    if (chainWaitingForThrow) {
+                        if (!isBoostKeyHeld) {
+                            vel.vx *= BOOST_MULTIPLIER;
+                            vel.vy *= BOOST_MULTIPLIER;
+                            boostedDots.add(dragDotId);
+                        }
+                        chainWaitingForThrow = false;
+                        startChainReactionRound(dragDotId);
+                        document.getElementById('chainStartBtn').textContent = 'Start Chain';
+                    }
+
                     const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
                     if (speed < MIN_VELOCITY) {
                         // If barely moving, snap to grid and stop
@@ -1476,6 +1634,11 @@
                 physicsAnimationId = requestAnimationFrame(physicsLoop);
             } else {
                 physicsAnimationId = null;
+
+                // Chain Reaction: end round when all motion stops
+                if (chainReactionMode && chainReactionActive) {
+                    endChainReactionRound();
+                }
             }
         }
 
@@ -1582,6 +1745,46 @@
                 dotTrails.clear();
                 trailGroup.selectAll('*').remove();
             }
+        });
+
+        // Chain Reaction controls
+        const chainReactionToggle = document.getElementById('chainReactionToggle');
+        const chainThresholdRow = document.getElementById('chainThresholdRow');
+        const chainThresholdSlider = document.getElementById('chainThresholdSlider');
+        const chainThresholdValue = document.getElementById('chainThresholdValue');
+        const chainStartBtn = document.getElementById('chainStartBtn');
+        const chainResetBtn = document.getElementById('chainResetBtn');
+        const chainScoreHUD = document.getElementById('chainScoreHUD');
+
+        chainReactionToggle.addEventListener('change', () => {
+            chainReactionMode = chainReactionToggle.checked;
+            chainScoreHUD.classList.toggle('active', chainReactionMode);
+            chainThresholdRow.style.display = chainReactionMode ? 'flex' : 'none';
+            chainStartBtn.style.display = chainReactionMode ? 'block' : 'none';
+            chainResetBtn.style.display = chainReactionMode ? 'block' : 'none';
+
+            if (!chainReactionMode) {
+                chainReactionActive = false;
+                chainReactionScore = 0;
+                chainReactionStartDotId = null;
+                chainWaitingForThrow = false;
+            }
+        });
+
+        chainThresholdSlider.addEventListener('input', () => {
+            chainThresholdValue.textContent = chainThresholdSlider.value;
+        });
+
+        chainStartBtn.addEventListener('click', () => {
+            if (chainReactionActive) return;
+            chainWaitingForThrow = true;
+            chainStartBtn.textContent = 'Throw a dot!';
+        });
+
+        chainResetBtn.addEventListener('click', () => {
+            chainWaitingForThrow = false;
+            chainStartBtn.textContent = 'Start Chain';
+            resetChainReaction();
         });
 
         // Grid toggle
