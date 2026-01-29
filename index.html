@@ -485,6 +485,48 @@
             color: rgba(255,255,255,0.6);
             margin-top: 4px;
         }
+
+        #territoryHUD {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #territoryHUD.active {
+            opacity: 1;
+        }
+
+        #territoryHUD .territory-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        #territoryHUD .territory-timer {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+
+        #territoryHUD .territory-score {
+            font-size: 18px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 4px;
+        }
+
+        #territoryHUD .territory-best {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -508,6 +550,13 @@
         <div class="pinball-label">Pinball</div>
         <div class="pinball-score" id="pinballScoreValue">0</div>
         <div class="pinball-best" id="pinballBestLabel">Best: 0</div>
+    </div>
+
+    <div id="territoryHUD">
+        <div class="territory-label">Territory</div>
+        <div class="territory-timer" id="territoryTimerValue">60</div>
+        <div class="territory-score">Score: <span id="territoryScoreValue">0</span></div>
+        <div class="territory-best" id="territoryBestLabel">Best: 0</div>
     </div>
 
     <div id="modifiers">
@@ -657,6 +706,12 @@
                     <input type="checkbox" id="pinballToggle">
                 </div>
                 <button class="action-btn" id="pinballStartBtn" style="display:none">Start Round</button>
+
+                <div class="control-row" style="margin-top: 12px;">
+                    <label for="territoryToggle">Territory</label>
+                    <input type="checkbox" id="territoryToggle">
+                </div>
+                <button class="action-btn" id="territoryStartBtn" style="display:none">Start Game</button>
             </div>
 
             <div class="control-section">
@@ -855,6 +910,18 @@
         let pinballBest = 0;
         let pinballRoundActive = false;
 
+        // Territory game state
+        let territoryMode = false;
+        let territoryRoundActive = false;
+        let territoryScore = 0;
+        let territoryBest = 0;
+        let territoryTimeLeft = 60;
+        let territoryTimerId = null;
+        let territoryZones = [];           // [{x, y, radius, progress, captured}]
+        let territoryKingZone = null;      // {x, y, radius}
+        let territoryPaintCanvas = null;
+        let territoryPaintCtx = null;
+
         // ========== UNIFIED MASS FUNCTION ==========
         // Area-based mass: (radius / DEFAULT_RADIUS)^2
         function mass(dot) {
@@ -904,6 +971,10 @@
 
         // Pinball bumper group
         const pinballBumperGroup = svg.append('g').attr('class', 'pinball-bumpers');
+
+        // Territory groups
+        const territoryPaintGroup = svg.append('g').attr('class', 'territory-paint');
+        const territoryZoneGroup = svg.append('g').attr('class', 'territory-zones');
 
         // Trail group (behind dots)
         const trailGroup = svg.append('g').attr('class', 'trails');
@@ -1502,6 +1573,322 @@
             bestLabel.textContent = 'Best: ' + pinballBest;
         }
 
+        // ========== TERRITORY GAME ==========
+        function initPaintCanvas() {
+            territoryPaintCanvas = document.createElement('canvas');
+            territoryPaintCanvas.width = window.innerWidth;
+            territoryPaintCanvas.height = window.innerHeight;
+            territoryPaintCtx = territoryPaintCanvas.getContext('2d');
+        }
+
+        function startTerritoryRound() {
+            // Clear any existing state
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            territoryPaintGroup.selectAll('*').remove();
+            territoryZoneGroup.selectAll('*').remove();
+
+            // Initialize paint canvas
+            initPaintCanvas();
+
+            // Place zones
+            placeZones();
+            renderZones();
+
+            // Reset score and timer
+            territoryScore = 0;
+            territoryTimeLeft = 60;
+            territoryRoundActive = true;
+
+            updateTerritoryHUD();
+            render();
+
+            // Start timer
+            territoryTimerId = setInterval(territoryTick, 1000);
+
+            document.getElementById('territoryStartBtn').style.display = 'none';
+        }
+
+        function endTerritoryRound() {
+            territoryRoundActive = false;
+
+            if (territoryTimerId) {
+                clearInterval(territoryTimerId);
+                territoryTimerId = null;
+            }
+
+            if (territoryScore > territoryBest) {
+                territoryBest = territoryScore;
+            }
+
+            updateTerritoryHUD();
+            document.getElementById('territoryStartBtn').style.display = 'block';
+            document.getElementById('territoryStartBtn').textContent = 'Play Again';
+        }
+
+        function resetTerritory() {
+            territoryRoundActive = false;
+
+            if (territoryTimerId) {
+                clearInterval(territoryTimerId);
+                territoryTimerId = null;
+            }
+
+            territoryZones = [];
+            territoryKingZone = null;
+            territoryScore = 0;
+            territoryTimeLeft = 60;
+            territoryPaintCanvas = null;
+            territoryPaintCtx = null;
+
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            territoryPaintGroup.selectAll('*').remove();
+            territoryZoneGroup.selectAll('*').remove();
+
+            render();
+            updateTerritoryHUD();
+        }
+
+        function placeZones() {
+            territoryZones = [];
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const margin = 100;
+            const zoneRadius = 60;
+
+            // Place king zone in center
+            territoryKingZone = {
+                x: width / 2,
+                y: height / 2,
+                radius: 80
+            };
+
+            // Place 4-6 capture zones
+            const count = 4 + Math.floor(Math.random() * 3);
+
+            for (let i = 0; i < count; i++) {
+                let attempts = 0;
+                let placed = false;
+
+                while (!placed && attempts < 50) {
+                    const x = margin + Math.random() * (width - margin * 2);
+                    const y = margin + Math.random() * (height - margin * 2);
+
+                    // Check overlap with king zone
+                    const kingDist = Math.sqrt((x - territoryKingZone.x) ** 2 + (y - territoryKingZone.y) ** 2);
+                    if (kingDist < zoneRadius + territoryKingZone.radius + 50) {
+                        attempts++;
+                        continue;
+                    }
+
+                    // Check overlap with other zones
+                    let overlaps = false;
+                    for (const other of territoryZones) {
+                        const dist = Math.sqrt((x - other.x) ** 2 + (y - other.y) ** 2);
+                        if (dist < zoneRadius * 2 + 40) {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+
+                    if (!overlaps) {
+                        territoryZones.push({
+                            x,
+                            y,
+                            radius: zoneRadius,
+                            progress: 0,
+                            captured: false
+                        });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            }
+        }
+
+        function renderZones() {
+            territoryZoneGroup.selectAll('*').remove();
+
+            // Regular capture zones
+            for (const zone of territoryZones) {
+                // Background
+                territoryZoneGroup.append('circle')
+                    .attr('cx', zone.x)
+                    .attr('cy', zone.y)
+                    .attr('r', zone.radius)
+                    .attr('fill', zone.captured ? 'rgba(100, 200, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)')
+                    .attr('stroke', zone.captured ? '#64c8ff' : '#666')
+                    .attr('stroke-width', 2);
+
+                // Progress indicator (ring that fills up)
+                if (!zone.captured && zone.progress > 0) {
+                    const progressAngle = (zone.progress / 100) * Math.PI * 2;
+                    const arc = d3.arc()
+                        .innerRadius(zone.radius - 5)
+                        .outerRadius(zone.radius)
+                        .startAngle(0)
+                        .endAngle(progressAngle);
+
+                    territoryZoneGroup.append('path')
+                        .attr('d', arc)
+                        .attr('transform', `translate(${zone.x}, ${zone.y})`)
+                        .attr('fill', '#64c8ff');
+                }
+
+                // Capture text
+                if (zone.captured) {
+                    territoryZoneGroup.append('text')
+                        .attr('x', zone.x)
+                        .attr('y', zone.y + 5)
+                        .attr('text-anchor', 'middle')
+                        .attr('fill', '#64c8ff')
+                        .attr('font-size', '12px')
+                        .attr('font-weight', 'bold')
+                        .text('CAPTURED');
+                }
+            }
+
+            // King zone (center, larger, gold)
+            if (territoryKingZone) {
+                const isOccupied = isKingOccupied();
+
+                territoryZoneGroup.append('circle')
+                    .attr('cx', territoryKingZone.x)
+                    .attr('cy', territoryKingZone.y)
+                    .attr('r', territoryKingZone.radius)
+                    .attr('fill', isOccupied ? 'rgba(255, 215, 0, 0.4)' : 'rgba(255, 215, 0, 0.15)')
+                    .attr('stroke', '#ffd700')
+                    .attr('stroke-width', 3)
+                    .attr('stroke-dasharray', isOccupied ? 'none' : '10,5');
+
+                territoryZoneGroup.append('text')
+                    .attr('x', territoryKingZone.x)
+                    .attr('y', territoryKingZone.y + 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', '#ffd700')
+                    .attr('font-size', '14px')
+                    .attr('font-weight', 'bold')
+                    .text('KING');
+            }
+        }
+
+        function updateZoneCapture() {
+            for (const zone of territoryZones) {
+                let dotsInZone = 0;
+
+                for (const dot of dots) {
+                    const dx = dot.x - zone.x;
+                    const dy = dot.y - zone.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= zone.radius) {
+                        dotsInZone++;
+                    }
+                }
+
+                if (dotsInZone > 0) {
+                    zone.progress = Math.min(100, zone.progress + dotsInZone * 2);
+                } else {
+                    zone.progress = Math.max(0, zone.progress - 0.5);
+                }
+
+                zone.captured = zone.progress >= 100;
+            }
+
+            renderZones();
+        }
+
+        function isKingOccupied() {
+            if (!territoryKingZone) return false;
+
+            for (const dot of dots) {
+                const dx = dot.x - territoryKingZone.x;
+                const dy = dot.y - territoryKingZone.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist <= territoryKingZone.radius) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function paintAt(x, y, radius) {
+            if (!territoryPaintCtx) return;
+            territoryPaintCtx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+            territoryPaintCtx.beginPath();
+            territoryPaintCtx.arc(x, y, radius * 1.5, 0, Math.PI * 2);
+            territoryPaintCtx.fill();
+        }
+
+        function renderPaint() {
+            if (!territoryPaintCanvas) return;
+
+            territoryPaintGroup.selectAll('image').remove();
+            territoryPaintGroup.append('image')
+                .attr('href', territoryPaintCanvas.toDataURL())
+                .attr('width', window.innerWidth)
+                .attr('height', window.innerHeight)
+                .attr('opacity', 0.6);
+        }
+
+        function calculatePaintScore() {
+            if (!territoryPaintCtx) return 0;
+            const imageData = territoryPaintCtx.getImageData(0, 0,
+                territoryPaintCanvas.width, territoryPaintCanvas.height);
+            let paintedPixels = 0;
+            for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) paintedPixels++;
+            }
+            return Math.floor(paintedPixels / 1000);
+        }
+
+        function territoryTick() {
+            territoryTimeLeft--;
+
+            // Score from captured zones (10 pts/sec each)
+            for (const zone of territoryZones) {
+                if (zone.captured) {
+                    territoryScore += 10;
+                }
+            }
+
+            // Score from king zone (25 pts/sec while occupied)
+            if (isKingOccupied()) {
+                territoryScore += 25;
+            }
+
+            // Score from paint (every 2 seconds)
+            if (territoryTimeLeft % 2 === 0) {
+                territoryScore += calculatePaintScore();
+            }
+
+            updateTerritoryHUD();
+
+            if (territoryTimeLeft <= 0) {
+                endTerritoryRound();
+            }
+        }
+
+        function updateTerritoryHUD() {
+            const timerValue = document.getElementById('territoryTimerValue');
+            const scoreValue = document.getElementById('territoryScoreValue');
+            const bestLabel = document.getElementById('territoryBestLabel');
+
+            if (!timerValue) return;
+
+            timerValue.textContent = territoryTimeLeft;
+            scoreValue.textContent = territoryScore;
+            bestLabel.textContent = 'Best: ' + territoryBest;
+        }
+
         // ========== RENDER ==========
         function render() {
             const circles = dotsGroup.selectAll('circle')
@@ -1535,7 +1922,7 @@
         // ========== DOT CREATION ==========
         function createDot(x, y) {
             // Disable dot creation in game modes
-            if (golfMode || pinballMode) return;
+            if (golfMode || pinballMode || territoryMode) return;
 
             const count = parseInt(document.getElementById('countSlider').value, 10);
 
@@ -2150,6 +2537,23 @@
             // Step 6: Update trails for fast-moving dots
             updateTrails();
 
+            // Step 6.5: Territory mode - update zones and paint
+            if (territoryMode && territoryRoundActive) {
+                updateZoneCapture();
+
+                // Paint trails for moving dots
+                for (const [dotId, vel] of dotVelocities) {
+                    const dot = dots.find(d => d.id === dotId);
+                    if (dot) {
+                        const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+                        if (speed > 1) {
+                            paintAt(dot.x, dot.y, dot.radius);
+                        }
+                    }
+                }
+                renderPaint();
+            }
+
             render();
 
             // Continue loop if any dots are moving OR dragging is active
@@ -2303,6 +2707,11 @@
                     pinballToggleEl.checked = false;
                     pinballToggleEl.dispatchEvent(new Event('change'));
                 }
+                const territoryToggleEl = document.getElementById('territoryToggle');
+                if (territoryToggleEl.checked) {
+                    territoryToggleEl.checked = false;
+                    territoryToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 chainReactionActive = false;
                 chainReactionScore = 0;
@@ -2349,6 +2758,11 @@
                     pinballToggleEl.checked = false;
                     pinballToggleEl.dispatchEvent(new Event('change'));
                 }
+                const territoryToggleEl = document.getElementById('territoryToggle');
+                if (territoryToggleEl.checked) {
+                    territoryToggleEl.checked = false;
+                    territoryToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 resetGolf();
                 golfNextBtn.style.display = 'none';
@@ -2386,6 +2800,11 @@
                     golfToggle.checked = false;
                     golfToggle.dispatchEvent(new Event('change'));
                 }
+                const territoryToggleEl = document.getElementById('territoryToggle');
+                if (territoryToggleEl.checked) {
+                    territoryToggleEl.checked = false;
+                    territoryToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 resetPinball();
             }
@@ -2393,6 +2812,39 @@
 
         pinballStartBtn.addEventListener('click', () => {
             startPinballRound();
+        });
+
+        // Territory mode
+        const territoryToggle = document.getElementById('territoryToggle');
+        const territoryStartBtn = document.getElementById('territoryStartBtn');
+        const territoryHUD = document.getElementById('territoryHUD');
+
+        territoryToggle.addEventListener('change', () => {
+            territoryMode = territoryToggle.checked;
+            territoryHUD.classList.toggle('active', territoryMode);
+            territoryStartBtn.style.display = territoryMode ? 'block' : 'none';
+
+            if (territoryMode) {
+                // Disable other game modes
+                if (chainReactionToggle.checked) {
+                    chainReactionToggle.checked = false;
+                    chainReactionToggle.dispatchEvent(new Event('change'));
+                }
+                if (golfToggle.checked) {
+                    golfToggle.checked = false;
+                    golfToggle.dispatchEvent(new Event('change'));
+                }
+                if (pinballToggle.checked) {
+                    pinballToggle.checked = false;
+                    pinballToggle.dispatchEvent(new Event('change'));
+                }
+            } else {
+                resetTerritory();
+            }
+        });
+
+        territoryStartBtn.addEventListener('click', () => {
+            startTerritoryRound();
         });
 
         // Grid toggle
