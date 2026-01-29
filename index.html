@@ -527,6 +527,42 @@
             color: rgba(255,255,255,0.6);
             margin-top: 4px;
         }
+
+        #survivalHUD {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #survivalHUD.active {
+            opacity: 1;
+        }
+
+        #survivalHUD .survival-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        #survivalHUD .survival-timer {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+
+        #survivalHUD .survival-best {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -557,6 +593,12 @@
         <div class="territory-timer" id="territoryTimerValue">60</div>
         <div class="territory-score">Score: <span id="territoryScoreValue">0</span></div>
         <div class="territory-best" id="territoryBestLabel">Best: 0</div>
+    </div>
+
+    <div id="survivalHUD">
+        <div class="survival-label">Survival</div>
+        <div class="survival-timer" id="survivalTimerValue">0:00</div>
+        <div class="survival-best" id="survivalBestLabel">Best: 0:00</div>
     </div>
 
     <div id="modifiers">
@@ -712,6 +754,12 @@
                     <input type="checkbox" id="territoryToggle">
                 </div>
                 <button class="action-btn" id="territoryStartBtn" style="display:none">Start Game</button>
+
+                <div class="control-row" style="margin-top: 12px;">
+                    <label for="survivalToggle">Survival</label>
+                    <input type="checkbox" id="survivalToggle">
+                </div>
+                <button class="action-btn" id="survivalStartBtn" style="display:none">Start</button>
             </div>
 
             <div class="control-section">
@@ -922,6 +970,17 @@
         let territoryPaintCanvas = null;
         let territoryPaintCtx = null;
 
+        // Survival game state
+        let survivalMode = false;
+        let survivalRoundActive = false;
+        let survivalPlayerId = null;
+        let survivalEnemies = [];          // [{id, x, y, radius}]
+        let survivalTimeElapsed = 0;
+        let survivalBest = 0;
+        let survivalTimerId = null;
+        let survivalSpawnTimerId = null;
+        let survivalNextEnemyId = 1;
+
         // ========== UNIFIED MASS FUNCTION ==========
         // Area-based mass: (radius / DEFAULT_RADIUS)^2
         function mass(dot) {
@@ -975,6 +1034,9 @@
         // Territory groups
         const territoryPaintGroup = svg.append('g').attr('class', 'territory-paint');
         const territoryZoneGroup = svg.append('g').attr('class', 'territory-zones');
+
+        // Survival enemy group
+        const survivalEnemyGroup = svg.append('g').attr('class', 'survival-enemies');
 
         // Trail group (behind dots)
         const trailGroup = svg.append('g').attr('class', 'trails');
@@ -1889,6 +1951,215 @@
             bestLabel.textContent = 'Best: ' + territoryBest;
         }
 
+        // ========== SURVIVAL GAME ==========
+        function startSurvivalRound() {
+            // Clear any existing state
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            survivalEnemies = [];
+            survivalEnemyGroup.selectAll('*').remove();
+
+            // Create player in center
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const playerDot = {
+                id: nextId++,
+                x: width / 2,
+                y: height / 2,
+                radius: DEFAULT_RADIUS
+            };
+            dots.push(playerDot);
+            survivalPlayerId = playerDot.id;
+
+            survivalTimeElapsed = 0;
+            survivalRoundActive = true;
+            survivalNextEnemyId = 1;
+
+            updateSurvivalHUD();
+            render();
+
+            // Start timer
+            survivalTimerId = setInterval(survivalTick, 1000);
+
+            // Start spawning enemies
+            survivalSpawnTimerId = setTimeout(spawnEnemy, 2000);
+
+            document.getElementById('survivalStartBtn').style.display = 'none';
+
+            // Start physics loop to keep enemies moving
+            startPhysicsLoop();
+        }
+
+        function endSurvivalRound() {
+            survivalRoundActive = false;
+
+            if (survivalTimerId) {
+                clearInterval(survivalTimerId);
+                survivalTimerId = null;
+            }
+
+            if (survivalSpawnTimerId) {
+                clearTimeout(survivalSpawnTimerId);
+                survivalSpawnTimerId = null;
+            }
+
+            if (survivalTimeElapsed > survivalBest) {
+                survivalBest = survivalTimeElapsed;
+            }
+
+            updateSurvivalHUD();
+            document.getElementById('survivalStartBtn').style.display = 'block';
+            document.getElementById('survivalStartBtn').textContent = 'Try Again';
+        }
+
+        function resetSurvival() {
+            survivalRoundActive = false;
+
+            if (survivalTimerId) {
+                clearInterval(survivalTimerId);
+                survivalTimerId = null;
+            }
+
+            if (survivalSpawnTimerId) {
+                clearTimeout(survivalSpawnTimerId);
+                survivalSpawnTimerId = null;
+            }
+
+            survivalPlayerId = null;
+            survivalEnemies = [];
+            survivalTimeElapsed = 0;
+            survivalNextEnemyId = 1;
+
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            survivalEnemyGroup.selectAll('*').remove();
+
+            render();
+            updateSurvivalHUD();
+        }
+
+        function getSpawnInterval() {
+            if (survivalTimeElapsed < 15) return 2000;
+            if (survivalTimeElapsed < 30) return 1500;
+            if (survivalTimeElapsed < 60) return 1000;
+            return 750;
+        }
+
+        function getEnemySpeed() {
+            if (survivalTimeElapsed < 15) return 2;
+            if (survivalTimeElapsed < 30) return 3;
+            if (survivalTimeElapsed < 60) return 4;
+            return 5;
+        }
+
+        function spawnEnemy() {
+            if (!survivalRoundActive) return;
+
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const radius = 15;
+
+            // Random edge: 0=top, 1=right, 2=bottom, 3=left
+            const edge = Math.floor(Math.random() * 4);
+            let x, y;
+
+            switch (edge) {
+                case 0: x = Math.random() * width; y = -radius; break;
+                case 1: x = width + radius; y = Math.random() * height; break;
+                case 2: x = Math.random() * width; y = height + radius; break;
+                case 3: x = -radius; y = Math.random() * height; break;
+            }
+
+            survivalEnemies.push({
+                id: survivalNextEnemyId++,
+                x, y, radius
+            });
+
+            // Schedule next spawn
+            survivalSpawnTimerId = setTimeout(spawnEnemy, getSpawnInterval());
+        }
+
+        function updateEnemies() {
+            const player = dots.find(d => d.id === survivalPlayerId);
+            if (!player) return;
+
+            const speed = getEnemySpeed();
+
+            for (const enemy of survivalEnemies) {
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 0) {
+                    enemy.x += (dx / dist) * speed;
+                    enemy.y += (dy / dist) * speed;
+                }
+            }
+        }
+
+        function checkSurvivalCollision() {
+            const player = dots.find(d => d.id === survivalPlayerId);
+            if (!player) return;
+
+            for (const enemy of survivalEnemies) {
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minDist = player.radius + enemy.radius;
+
+                if (dist < minDist) {
+                    endSurvivalRound();
+                    return;
+                }
+            }
+        }
+
+        function renderEnemies() {
+            const circles = survivalEnemyGroup.selectAll('circle')
+                .data(survivalEnemies, d => d.id);
+
+            circles.exit().remove();
+
+            circles.enter()
+                .append('circle')
+                .attr('r', d => d.radius)
+                .attr('fill', '#ff4444')
+                .attr('stroke', '#cc0000')
+                .attr('stroke-width', 2)
+              .merge(circles)
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+        }
+
+        function survivalTick() {
+            survivalTimeElapsed++;
+            updateSurvivalHUD();
+        }
+
+        function formatSurvivalTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        function updateSurvivalHUD() {
+            const timerValue = document.getElementById('survivalTimerValue');
+            const bestLabel = document.getElementById('survivalBestLabel');
+
+            if (!timerValue) return;
+
+            timerValue.textContent = formatSurvivalTime(survivalTimeElapsed);
+            bestLabel.textContent = 'Best: ' + formatSurvivalTime(survivalBest);
+        }
+
         // ========== RENDER ==========
         function render() {
             const circles = dotsGroup.selectAll('circle')
@@ -1922,7 +2193,7 @@
         // ========== DOT CREATION ==========
         function createDot(x, y) {
             // Disable dot creation in game modes
-            if (golfMode || pinballMode || territoryMode) return;
+            if (golfMode || pinballMode || territoryMode || survivalMode) return;
 
             const count = parseInt(document.getElementById('countSlider').value, 10);
 
@@ -2554,10 +2825,17 @@
                 renderPaint();
             }
 
+            // Step 6.6: Survival mode - update enemies and check collision
+            if (survivalMode && survivalRoundActive) {
+                updateEnemies();
+                checkSurvivalCollision();
+                renderEnemies();
+            }
+
             render();
 
-            // Continue loop if any dots are moving OR dragging is active
-            if (dotVelocities.size > 0 || isDragging) {
+            // Continue loop if any dots are moving OR dragging is active OR survival mode active
+            if (dotVelocities.size > 0 || isDragging || (survivalMode && survivalRoundActive)) {
                 physicsAnimationId = requestAnimationFrame(physicsLoop);
             } else {
                 physicsAnimationId = null;
@@ -2712,6 +2990,11 @@
                     territoryToggleEl.checked = false;
                     territoryToggleEl.dispatchEvent(new Event('change'));
                 }
+                const survivalToggleEl = document.getElementById('survivalToggle');
+                if (survivalToggleEl.checked) {
+                    survivalToggleEl.checked = false;
+                    survivalToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 chainReactionActive = false;
                 chainReactionScore = 0;
@@ -2763,6 +3046,11 @@
                     territoryToggleEl.checked = false;
                     territoryToggleEl.dispatchEvent(new Event('change'));
                 }
+                const survivalToggleEl = document.getElementById('survivalToggle');
+                if (survivalToggleEl.checked) {
+                    survivalToggleEl.checked = false;
+                    survivalToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 resetGolf();
                 golfNextBtn.style.display = 'none';
@@ -2805,6 +3093,11 @@
                     territoryToggleEl.checked = false;
                     territoryToggleEl.dispatchEvent(new Event('change'));
                 }
+                const survivalToggleEl = document.getElementById('survivalToggle');
+                if (survivalToggleEl.checked) {
+                    survivalToggleEl.checked = false;
+                    survivalToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 resetPinball();
             }
@@ -2838,6 +3131,11 @@
                     pinballToggle.checked = false;
                     pinballToggle.dispatchEvent(new Event('change'));
                 }
+                const survivalToggleEl = document.getElementById('survivalToggle');
+                if (survivalToggleEl.checked) {
+                    survivalToggleEl.checked = false;
+                    survivalToggleEl.dispatchEvent(new Event('change'));
+                }
             } else {
                 resetTerritory();
             }
@@ -2845,6 +3143,43 @@
 
         territoryStartBtn.addEventListener('click', () => {
             startTerritoryRound();
+        });
+
+        // Survival mode
+        const survivalToggle = document.getElementById('survivalToggle');
+        const survivalStartBtn = document.getElementById('survivalStartBtn');
+        const survivalHUD = document.getElementById('survivalHUD');
+
+        survivalToggle.addEventListener('change', () => {
+            survivalMode = survivalToggle.checked;
+            survivalHUD.classList.toggle('active', survivalMode);
+            survivalStartBtn.style.display = survivalMode ? 'block' : 'none';
+
+            if (survivalMode) {
+                // Disable other game modes
+                if (chainReactionToggle.checked) {
+                    chainReactionToggle.checked = false;
+                    chainReactionToggle.dispatchEvent(new Event('change'));
+                }
+                if (golfToggle.checked) {
+                    golfToggle.checked = false;
+                    golfToggle.dispatchEvent(new Event('change'));
+                }
+                if (pinballToggle.checked) {
+                    pinballToggle.checked = false;
+                    pinballToggle.dispatchEvent(new Event('change'));
+                }
+                if (territoryToggle.checked) {
+                    territoryToggle.checked = false;
+                    territoryToggle.dispatchEvent(new Event('change'));
+                }
+            } else {
+                resetSurvival();
+            }
+        });
+
+        survivalStartBtn.addEventListener('click', () => {
+            startSurvivalRound();
         });
 
         // Grid toggle
