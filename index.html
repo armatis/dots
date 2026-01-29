@@ -449,6 +449,42 @@
             color: #82ccdd;
             margin-top: 8px;
         }
+
+        #pinballHUD {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #pinballHUD.active {
+            opacity: 1;
+        }
+
+        #pinballHUD .pinball-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        #pinballHUD .pinball-score {
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+
+        #pinballHUD .pinball-best {
+            font-size: 14px;
+            color: rgba(255,255,255,0.6);
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -466,6 +502,12 @@
         <div class="golf-par" id="golfParLabel">Par 3</div>
         <div class="golf-total" id="golfTotalLabel"></div>
         <div class="golf-complete" id="golfCompleteLabel"></div>
+    </div>
+
+    <div id="pinballHUD">
+        <div class="pinball-label">Pinball</div>
+        <div class="pinball-score" id="pinballScoreValue">0</div>
+        <div class="pinball-best" id="pinballBestLabel">Best: 0</div>
     </div>
 
     <div id="modifiers">
@@ -609,6 +651,12 @@
                 </div>
                 <button class="action-btn" id="golfStartBtn" style="display:none">Start Hole</button>
                 <button class="action-btn" id="golfNextBtn" style="display:none">Next Hole</button>
+
+                <div class="control-row" style="margin-top: 12px;">
+                    <label for="pinballToggle">Pinball</label>
+                    <input type="checkbox" id="pinballToggle">
+                </div>
+                <button class="action-btn" id="pinballStartBtn" style="display:none">Start Round</button>
             </div>
 
             <div class="control-section">
@@ -799,6 +847,14 @@
         let golfTotalScore = 0;
         let golfHoleComplete = false;
 
+        // Pinball game state
+        let pinballMode = false;
+        let pinballBallId = null;
+        let pinballBumpers = [];         // [{x, y, radius, points, type}]
+        let pinballScore = 0;
+        let pinballBest = 0;
+        let pinballRoundActive = false;
+
         // ========== UNIFIED MASS FUNCTION ==========
         // Area-based mass: (radius / DEFAULT_RADIUS)^2
         function mass(dot) {
@@ -845,6 +901,9 @@
 
         // Golf target group (behind everything)
         const golfTargetGroup = svg.append('g').attr('class', 'golf-target');
+
+        // Pinball bumper group
+        const pinballBumperGroup = svg.append('g').attr('class', 'pinball-bumpers');
 
         // Trail group (behind dots)
         const trailGroup = svg.append('g').attr('class', 'trails');
@@ -1293,6 +1352,156 @@
             }
         }
 
+        // ========== PINBALL GAME ==========
+        function startPinballRound() {
+            // Clear any existing dots
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+
+            // Place bumpers
+            placeBumpers();
+            renderBumpers();
+
+            // Create ball at start position
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const ballDot = {
+                id: nextId++,
+                x: 100,
+                y: height / 2,
+                radius: DEFAULT_RADIUS
+            };
+            dots.push(ballDot);
+            pinballBallId = ballDot.id;
+
+            pinballScore = 0;
+            pinballRoundActive = false; // Will become active on first throw
+
+            updatePinballHUD();
+            render();
+
+            document.getElementById('pinballStartBtn').textContent = 'Start Round';
+        }
+
+        function endPinballRound() {
+            pinballRoundActive = false;
+            if (pinballScore > pinballBest) {
+                pinballBest = pinballScore;
+            }
+            updatePinballHUD();
+            document.getElementById('pinballStartBtn').style.display = 'block';
+        }
+
+        function resetPinball() {
+            pinballBallId = null;
+            pinballBumpers = [];
+            pinballScore = 0;
+            pinballRoundActive = false;
+
+            dots = [];
+            dotVelocities.clear();
+            noFrictionDots.clear();
+            boostedDots.clear();
+            dotTrails.clear();
+            trailGroup.selectAll('*').remove();
+            pinballBumperGroup.selectAll('*').remove();
+
+            render();
+            updatePinballHUD();
+        }
+
+        function placeBumpers() {
+            pinballBumpers = [];
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const margin = 120;
+            const bumperRadius = 30;
+
+            // Place 5-8 bumpers
+            const count = 5 + Math.floor(Math.random() * 4);
+
+            for (let i = 0; i < count; i++) {
+                let attempts = 0;
+                let placed = false;
+
+                while (!placed && attempts < 50) {
+                    const x = margin + Math.random() * (width - margin * 2);
+                    const y = margin + Math.random() * (height - margin * 2);
+
+                    // Check overlap with other bumpers
+                    let overlaps = false;
+                    for (const other of pinballBumpers) {
+                        const dist = Math.sqrt((x - other.x) ** 2 + (y - other.y) ** 2);
+                        if (dist < bumperRadius * 2 + 40) {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+
+                    if (!overlaps) {
+                        const isBonus = Math.random() < 0.2; // 20% chance of bonus
+                        pinballBumpers.push({
+                            x,
+                            y,
+                            radius: bumperRadius,
+                            points: isBonus ? 25 : 10,
+                            type: isBonus ? 'bonus' : 'standard'
+                        });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+            }
+        }
+
+        function renderBumpers() {
+            pinballBumperGroup.selectAll('*').remove();
+
+            for (const bumper of pinballBumpers) {
+                // Outer glow
+                pinballBumperGroup.append('circle')
+                    .attr('cx', bumper.x)
+                    .attr('cy', bumper.y)
+                    .attr('r', bumper.radius + 5)
+                    .attr('fill', 'none')
+                    .attr('stroke', bumper.type === 'bonus' ? 'rgba(255, 215, 0, 0.5)' : 'rgba(255, 255, 255, 0.3)')
+                    .attr('stroke-width', 3);
+
+                // Main bumper
+                pinballBumperGroup.append('circle')
+                    .attr('cx', bumper.x)
+                    .attr('cy', bumper.y)
+                    .attr('r', bumper.radius)
+                    .attr('fill', bumper.type === 'bonus' ? '#ffd700' : '#fff')
+                    .attr('stroke', bumper.type === 'bonus' ? '#b8860b' : '#ccc')
+                    .attr('stroke-width', 2);
+
+                // Center point value
+                pinballBumperGroup.append('text')
+                    .attr('x', bumper.x)
+                    .attr('y', bumper.y + 5)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', bumper.type === 'bonus' ? '#000' : '#333')
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .text(bumper.points);
+            }
+        }
+
+        function updatePinballHUD() {
+            const scoreValue = document.getElementById('pinballScoreValue');
+            const bestLabel = document.getElementById('pinballBestLabel');
+
+            if (!scoreValue) return;
+
+            scoreValue.textContent = pinballScore;
+            bestLabel.textContent = 'Best: ' + pinballBest;
+        }
+
         // ========== RENDER ==========
         function render() {
             const circles = dotsGroup.selectAll('circle')
@@ -1325,8 +1534,8 @@
 
         // ========== DOT CREATION ==========
         function createDot(x, y) {
-            // Disable dot creation in golf mode
-            if (golfMode) return;
+            // Disable dot creation in game modes
+            if (golfMode || pinballMode) return;
 
             const count = parseInt(document.getElementById('countSlider').value, 10);
 
@@ -1670,6 +1879,12 @@
                         updateGolfHUD();
                     }
 
+                    // Pinball: activate round on first throw
+                    if (pinballMode && pinballBallId !== null && dragDotId === pinballBallId && !pinballRoundActive) {
+                        pinballRoundActive = true;
+                        document.getElementById('pinballStartBtn').style.display = 'none';
+                    }
+
                     const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
                     if (speed < MIN_VELOCITY) {
                         // If barely moving, snap to grid and stop
@@ -1855,6 +2070,48 @@
                 }
             }
 
+            // Step 4.5: Pinball bumper collisions
+            if (pinballMode && pinballRoundActive && pinballBallId !== null) {
+                const ball = dots.find(d => d.id === pinballBallId);
+                if (ball) {
+                    const vel = dotVelocities.get(pinballBallId);
+                    if (vel) {
+                        for (const bumper of pinballBumpers) {
+                            const dx = ball.x - bumper.x;
+                            const dy = ball.y - bumper.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const minDist = ball.radius + bumper.radius;
+
+                            if (dist < minDist && dist > 0) {
+                                // Bounce off bumper
+                                const nx = dx / dist;
+                                const ny = dy / dist;
+
+                                // Push ball out
+                                const overlap = minDist - dist;
+                                ball.x += nx * overlap;
+                                ball.y += ny * overlap;
+
+                                // Reflect velocity with boost
+                                const dot = vel.vx * nx + vel.vy * ny;
+                                if (dot < 0) { // Moving toward bumper
+                                    vel.vx -= 2 * dot * nx;
+                                    vel.vy -= 2 * dot * ny;
+
+                                    // Apply boost
+                                    vel.vx *= 1.3;
+                                    vel.vy *= 1.3;
+
+                                    // Score!
+                                    pinballScore += bumper.points;
+                                    updatePinballHUD();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Step 5: Apply friction (skip if frozen, or for dragged/perpetual dots)
             if (!isFrozen) {
                 for (const [dotId, vel] of dotVelocities) {
@@ -1904,6 +2161,11 @@
                 // Chain Reaction: end round when all motion stops
                 if (chainReactionMode && chainReactionActive) {
                     endChainReactionRound();
+                }
+
+                // Pinball: end round when all motion stops
+                if (pinballMode && pinballRoundActive) {
+                    endPinballRound();
                 }
             }
         }
@@ -2030,11 +2292,16 @@
             chainResetBtn.style.display = chainReactionMode ? 'block' : 'none';
 
             if (chainReactionMode) {
-                // Disable golf mode
+                // Disable other game modes
                 const golfToggleEl = document.getElementById('golfToggle');
                 if (golfToggleEl.checked) {
                     golfToggleEl.checked = false;
                     golfToggleEl.dispatchEvent(new Event('change'));
+                }
+                const pinballToggleEl = document.getElementById('pinballToggle');
+                if (pinballToggleEl.checked) {
+                    pinballToggleEl.checked = false;
+                    pinballToggleEl.dispatchEvent(new Event('change'));
                 }
             } else {
                 chainReactionActive = false;
@@ -2072,10 +2339,15 @@
             golfStartBtn.style.display = golfMode ? 'block' : 'none';
 
             if (golfMode) {
-                // Disable chain reaction mode
+                // Disable other game modes
                 if (chainReactionToggle.checked) {
                     chainReactionToggle.checked = false;
                     chainReactionToggle.dispatchEvent(new Event('change'));
+                }
+                const pinballToggleEl = document.getElementById('pinballToggle');
+                if (pinballToggleEl.checked) {
+                    pinballToggleEl.checked = false;
+                    pinballToggleEl.dispatchEvent(new Event('change'));
                 }
             } else {
                 resetGolf();
@@ -2092,6 +2364,35 @@
         golfNextBtn.addEventListener('click', () => {
             nextGolfHole();
             golfNextBtn.style.display = 'none';
+        });
+
+        // Pinball mode
+        const pinballToggle = document.getElementById('pinballToggle');
+        const pinballStartBtn = document.getElementById('pinballStartBtn');
+        const pinballHUD = document.getElementById('pinballHUD');
+
+        pinballToggle.addEventListener('change', () => {
+            pinballMode = pinballToggle.checked;
+            pinballHUD.classList.toggle('active', pinballMode);
+            pinballStartBtn.style.display = pinballMode ? 'block' : 'none';
+
+            if (pinballMode) {
+                // Disable other game modes
+                if (chainReactionToggle.checked) {
+                    chainReactionToggle.checked = false;
+                    chainReactionToggle.dispatchEvent(new Event('change'));
+                }
+                if (golfToggle.checked) {
+                    golfToggle.checked = false;
+                    golfToggle.dispatchEvent(new Event('change'));
+                }
+            } else {
+                resetPinball();
+            }
+        });
+
+        pinballStartBtn.addEventListener('click', () => {
+            startPinballRound();
         });
 
         // Grid toggle
