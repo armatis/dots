@@ -1,5 +1,9 @@
 # Dots - Interactive Canvas Physics Playground
 
+## Rules
+
+- **No Claude attribution in commits**: Do not add "Co-Authored-By: Claude" or any similar AI attribution to git commits.
+
 ## Project Overview
 
 Dots is an experimental canvas-based game engine focused on circle physics, collisions, and interactive pattern generation. What started as a simple experiment to create growing and shrinking dots has evolved into a creative sandbox with multiple game mechanics centered around dot interactions.
@@ -26,23 +30,20 @@ Dots is an experimental canvas-based game engine focused on circle physics, coll
   - Separate arrays for game modes (dots, clusterDots, pinballBumpers)
   - Velocity Map for unified movement tracking
   - Sets for modifiers (noFrictionDots, boostedDots)
-  - Trail system with Map<dotId, [{x,y,opacity,radius}]>
 - **Performance**: ~50-60 dots smooth on desktop, ~20-30 on mobile before lag
 
 ### Architectural Concerns
 
 ⚠️ **D3.js Performance Bottlenecks Identified**:
 
-- **DOM Updates**: Every frame updates cx/cy/r attributes via D3 data binding (line 2097-2110)
+- **DOM Updates**: Every frame updates cx/cy/r attributes via D3 data binding
 - **SVG Overhead**: Each dot is a full DOM node with complex rendering pipeline
-- **Trail System**: Individual SVG circles for each trail point (line 700-750) - can be 100+ nodes
 - **No Culling**: Rendering all dots even when off-screen
 - **Multiple Render Paths**: Separate rendering for cluster mode (clusterDotsGroup) but still SVG
 
 **Measured Impact**:
 
 - Current: ~50 dots smooth on desktop, ~25 on mobile
-- Trail system alone: 20 dots × 20 trail points = 400 SVG elements per frame
 - Each D3 `.attr()` call triggers DOM mutation and repaint
 
 **Root Cause**: D3.js is designed for data visualization, not frame-based game rendering
