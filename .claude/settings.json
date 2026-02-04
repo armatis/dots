@@ -1,0 +1,100 @@
+{
+  "version": "1.0",
+  "project": {
+    "name": "Dots - Interactive Canvas Physics Playground",
+    "description": "Experimental canvas-based game engine with circle physics, collisions, and interactive patterns"
+  },
+  "plugins": {
+    "marketplaces": [
+      {
+        "name": "anthropics-official",
+        "url": "anthropics/claude-code-plugins",
+        "description": "Official Anthropic plugins"
+      },
+      {
+        "name": "dotclaude",
+        "url": "dotclaude/dotclaude-plugins",
+        "description": "Frontend excellence and React/Next.js workflows"
+      }
+    ],
+    "installed": [
+      {
+        "name": "frontend-design",
+        "marketplace": "anthropics-official",
+        "enabled": true,
+        "description": "Production-grade frontend interfaces with creative aesthetics"
+      },
+      {
+        "name": "frontend-excellence",
+        "marketplace": "dotclaude",
+        "enabled": true,
+        "description": "React 19, Next.js 15, component architecture, performance optimization"
+      }
+    ]
+  },
+  "skills": {
+    "custom": [
+      {
+        "name": "canvas-physics",
+        "path": ".claude/skills/canvas-physics/SKILL.md",
+        "enabled": true,
+        "description": "Expert guidance for canvas physics, game loops, and mobile optimization"
+      }
+    ]
+  },
+  "agents": {},
+  "commands": {},
+  "hooks": {},
+  "preferences": {
+    "performance": {
+      "targetFPS": 60,
+      "mobileOptimization": true,
+      "enableProfiling": true
+    },
+    "development": {
+      "experimentationMode": true,
+      "debugOverlays": true,
+      "iterationSpeed": "fast"
+    },
+    "codeStyle": {
+      "comments": "minimal",
+      "optimization": "balanced",
+      "readability": "high"
+    }
+  },
+  "environment": {
+    "type": "web",
+    "target": "mobile-first",
+    "frameworks": {
+      "current": "vanilla-js",
+      "planned": ["react", "next.js"]
+    }
+  },
+  "goals": [
+    "Build interactive canvas physics games with dots",
+    "Create debugger panel for real-time parameter tuning",
+    "Optimize for 60fps on mobile devices",
+    "Migrate from D3.js to Canvas API for better performance",
+    "Eventually deploy as iOS/Android mobile apps"
+  ],
+  "architecture": {
+    "rendering": {
+      "current": "d3.js (SVG)",
+      "target": "Canvas API",
+      "ui": "D3.js or React (for debugger panel only)"
+    },
+    "physics": {
+      "type": "custom",
+      "features": ["growth", "shrinkage", "movement", "collisions", "interactions"]
+    },
+    "structure": {
+      "current": "single-file",
+      "target": "modular-components"
+    }
+  },
+  "documentation": {
+    "projectOverview": "See CLAUDE.md for comprehensive project context",
+    "skills": "Custom canvas-physics skill provides physics and rendering patterns",
+    "inspiration": "shape.jpg - geometric pattern reference"
+  }
+}
