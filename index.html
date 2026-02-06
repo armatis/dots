@@ -3245,9 +3245,10 @@
             };
             dots.push(newDot);
 
-            // If in orbit mode, initialize velocity so gravity affects it immediately
-            if (orbitMode && orbitSunId !== null) {
+            // If in orbit mode, add to orbiting dots so they start orbiting
+            if (orbitMode && orbitSunId !== null && orbitingDots.size < MAX_ORBITERS) {
               dotVelocities.set(newDot.id, { vx: 0, vy: 0 });
+              orbitingDots.add(newDot.id);
             }
           }
         } else {
@@ -3277,9 +3278,10 @@
         };
         dots.push(centerDot);
 
-        // Initialize velocity for orbit mode
-        if (orbitMode && orbitSunId !== null) {
+        // Add to orbiting dots if in orbit mode
+        if (orbitMode && orbitSunId !== null && orbitingDots.size < MAX_ORBITERS) {
           dotVelocities.set(centerDot.id, { vx: 0, vy: 0 });
+          orbitingDots.add(centerDot.id);
         }
 
         if (count === 1) return;
@@ -3310,9 +3312,10 @@
               };
               dots.push(newDot);
 
-              // Initialize velocity for orbit mode
-              if (orbitMode && orbitSunId !== null) {
+              // Add to orbiting dots if in orbit mode
+              if (orbitMode && orbitSunId !== null && orbitingDots.size < MAX_ORBITERS) {
                 dotVelocities.set(newDot.id, { vx: 0, vy: 0 });
+                orbitingDots.add(newDot.id);
               }
 
               placed++;
@@ -3888,17 +3891,19 @@
         }
 
         // Step 1.5: Apply orbital mechanics (dots orbit around sun like moon around earth)
+        // Only applies to dots already in orbitingDots set (added when created or thrown)
         if (orbitMode && orbitSunId !== null && !isFrozen) {
           const sun = dots.find(d => d.id === orbitSunId);
           if (sun) {
             const strength = getOrbitStrength();
 
-            for (const dot of dots) {
-              // Skip the sun itself and locked dots
-              if (dot.id === orbitSunId || dot.locked) continue;
-
-              // Skip if we're at max orbiters and this dot isn't already orbiting
-              if (orbitingDots.size >= MAX_ORBITERS && !orbitingDots.has(dot.id)) continue;
+            // Only process dots that are already orbiting
+            for (const dotId of orbitingDots) {
+              const dot = dots.find(d => d.id === dotId);
+              if (!dot || dot.locked) {
+                orbitingDots.delete(dotId);
+                continue;
+              }
 
               const dx = dot.x - sun.x;
               const dy = dot.y - sun.y;
@@ -3906,16 +3911,12 @@
 
               const maxRange = 500;
               if (dist > maxRange) {
-                orbitingDots.delete(dot.id);
+                orbitingDots.delete(dotId);
                 continue;
               }
 
               // Minimum orbital distance - keep dots away from sun
               const minOrbitDist = sun.radius + dot.radius + 30;
-
-              // Add to orbiters
-              const isNewOrbiter = !orbitingDots.has(dot.id);
-              orbitingDots.add(dot.id);
 
               // Remove friction for orbiting dots so they maintain speed
               noFrictionDots.add(dot.id);
