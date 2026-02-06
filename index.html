@@ -3237,12 +3237,18 @@
         if (count === 1) {
           const placement = findPlacementPosition(x, y, DEFAULT_RADIUS);
           if (!wouldOverlap(placement.x, placement.y, DEFAULT_RADIUS)) {
-            dots.push({
+            const newDot = {
               id: nextId++,
               x: placement.x,
               y: placement.y,
               radius: DEFAULT_RADIUS,
-            });
+            };
+            dots.push(newDot);
+
+            // If in orbit mode, initialize velocity so gravity affects it immediately
+            if (orbitMode && orbitSunId !== null) {
+              dotVelocities.set(newDot.id, { vx: 0, vy: 0 });
+            }
           }
         } else {
           createDotCluster(x, y, count);
@@ -3271,6 +3277,11 @@
         };
         dots.push(centerDot);
 
+        // Initialize velocity for orbit mode
+        if (orbitMode && orbitSunId !== null) {
+          dotVelocities.set(centerDot.id, { vx: 0, vy: 0 });
+        }
+
         if (count === 1) return;
 
         let placed = 1;
@@ -3291,12 +3302,19 @@
             const snapped = snapToGrid(testX, testY);
 
             if (!wouldOverlap(snapped.x, snapped.y, DEFAULT_RADIUS)) {
-              dots.push({
+              const newDot = {
                 id: nextId++,
                 x: snapped.x,
                 y: snapped.y,
                 radius: DEFAULT_RADIUS,
-              });
+              };
+              dots.push(newDot);
+
+              // Initialize velocity for orbit mode
+              if (orbitMode && orbitSunId !== null) {
+                dotVelocities.set(newDot.id, { vx: 0, vy: 0 });
+              }
+
               placed++;
             }
           }
