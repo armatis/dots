@@ -2118,6 +2118,9 @@
       });
 
       gameCanvas.addEventListener("mouseup", function(event) {
+        // Always clear hold timer on release to prevent orphaned shrink timers
+        clearHoldTimer();
+
         if (clusterDragDotId !== null) {
           finalizeClusterDrag();
           return;
@@ -2232,6 +2235,9 @@
       }, { passive: false });
 
       gameCanvas.addEventListener("touchend", function(event) {
+        // Always clear hold timer on release to prevent orphaned shrink timers
+        clearHoldTimer();
+
         if (clusterDragDotId !== null) {
           finalizeClusterDrag();
           return;
