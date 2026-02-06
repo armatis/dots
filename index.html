@@ -3887,7 +3887,7 @@
           }
         }
 
-        // Step 1.5: Apply orbital mechanics (dots orbit around sun)
+        // Step 1.5: Apply orbital mechanics (dots orbit around sun like moon around earth)
         if (orbitMode && orbitSunId !== null && !isFrozen) {
           const sun = dots.find(d => d.id === orbitSunId);
           if (sun) {
@@ -3900,53 +3900,52 @@
               // Skip if we're at max orbiters and this dot isn't already orbiting
               if (orbitingDots.size >= MAX_ORBITERS && !orbitingDots.has(dot.id)) continue;
 
-              const dx = sun.x - dot.x;
-              const dy = sun.y - dot.y;
+              const dx = dot.x - sun.x;
+              const dy = dot.y - sun.y;
               const dist = Math.sqrt(dx * dx + dy * dy);
 
-              // Skip if too close (inside sun)
-              const minDist = sun.radius + dot.radius + 5;
-              if (dist < minDist) continue;
-
-              const maxRange = 500; // Max orbital range
+              const maxRange = 500;
               if (dist > maxRange) {
-                // Remove from orbiters if too far
                 orbitingDots.delete(dot.id);
                 continue;
               }
 
-              // Direction toward sun (radial)
-              const nx = dx / dist;
-              const ny = dy / dist;
+              // Minimum orbital distance - keep dots away from sun
+              const minOrbitDist = sun.radius + dot.radius + 30;
 
-              // Perpendicular direction (tangential) - for counter-clockwise orbit
-              const tx = -ny;
-              const ty = nx;
+              // Add to orbiters
+              const isNewOrbiter = !orbitingDots.has(dot.id);
+              orbitingDots.add(dot.id);
+
+              // Remove friction for orbiting dots so they maintain speed
+              noFrictionDots.add(dot.id);
 
               // Get or create velocity
               let vel = dotVelocities.get(dot.id);
-              const isNewOrbiter = !orbitingDots.has(dot.id);
-
               if (!vel) {
                 vel = { vx: 0, vy: 0 };
                 dotVelocities.set(dot.id, vel);
               }
 
-              // Add to orbiters
-              orbitingDots.add(dot.id);
+              // Calculate orbital radius (where the dot should orbit)
+              const orbitRadius = Math.max(dist, minOrbitDist);
 
-              // If this is a new orbiter, give it initial tangential velocity
-              if (isNewOrbiter || (Math.abs(vel.vx) < 0.1 && Math.abs(vel.vy) < 0.1)) {
-                // Orbital velocity - faster when closer to maintain orbit
-                const orbitalSpeed = Math.sqrt(ORBIT_GRAVITY * strength * sun.radius * 2 / dist) * 3;
-                vel.vx = tx * orbitalSpeed;
-                vel.vy = ty * orbitalSpeed;
-              }
+              // Angular velocity (radians per frame) - scales with strength, slower when further
+              const angularVel = (0.02 + strength * 0.02) * (100 / orbitRadius);
 
-              // Apply centripetal force (pull toward center) to maintain orbit
-              const centripetalForce = ORBIT_GRAVITY * strength * (sun.radius / 20) / dist * 1.5;
-              vel.vx += nx * centripetalForce;
-              vel.vy += ny * centripetalForce;
+              // Current angle from sun to dot
+              const angle = Math.atan2(dy, dx);
+
+              // New angle (rotate counter-clockwise)
+              const newAngle = angle + angularVel;
+
+              // Target position on orbit
+              const targetX = sun.x + Math.cos(newAngle) * orbitRadius;
+              const targetY = sun.y + Math.sin(newAngle) * orbitRadius;
+
+              // Set velocity to move toward target position
+              vel.vx = (targetX - dot.x) * 0.5;
+              vel.vy = (targetY - dot.y) * 0.5;
             }
           }
         }
