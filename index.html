@@ -443,6 +443,111 @@
         50% { box-shadow: 0 0 16px var(--accent), 0 0 24px var(--accent-glow); }
       }
 
+      /* Lock Mode Toggle */
+      .lock-mode-toggle {
+        width: 100%;
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-secondary);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .lock-mode-toggle:hover {
+        background: rgba(255, 193, 7, 0.1);
+        border-color: rgba(255, 193, 7, 0.5);
+        color: var(--text-primary);
+      }
+
+      .lock-mode-toggle.active {
+        background: rgba(255, 193, 7, 0.2);
+        border-color: #ffc107;
+        color: #ffc107;
+        box-shadow: 0 0 16px rgba(255, 193, 7, 0.2), inset 0 0 12px rgba(255, 193, 7, 0.1);
+      }
+
+      .lock-mode-toggle .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        transition: all 0.25s ease;
+      }
+
+      .lock-mode-toggle.active .status-dot {
+        background: #ffc107;
+        box-shadow: 0 0 8px #ffc107;
+      }
+
+      /* Lock Mode Indicator */
+      #lockIndicator {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        transform: translateY(20px);
+        padding: 12px 18px;
+        background: var(--panel-bg);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.5);
+        border-radius: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        pointer-events: auto;
+        cursor: pointer;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 150;
+        box-shadow:
+          0 0 40px rgba(255, 193, 7, 0.15),
+          0 4px 20px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #lockIndicator:hover {
+        background: rgba(12, 28, 44, 0.95);
+        border-color: #ffc107;
+        box-shadow:
+          0 0 50px rgba(255, 193, 7, 0.2),
+          0 4px 24px rgba(0, 0, 0, 0.5);
+      }
+
+      #lockIndicator:active {
+        transform: translateY(2px);
+      }
+
+      #lockIndicator.active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      #lockIndicator.active:active {
+        transform: translateY(2px);
+      }
+
+      #lockIndicator .exit-x {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-left: 6px;
+      }
+
       /* Paint Mode Indicator - clickable exit button */
       #paintIndicator {
         position: fixed;
@@ -1474,6 +1579,7 @@
 
     <div id="freezeIndicator">❄ FROZEN</div>
     <div id="paintIndicator"><span class="color-preview" id="paintColorPreview"></span> PAINT <span class="exit-x">✕</span></div>
+    <div id="lockIndicator">🔒 LOCK <span class="exit-x">✕</span></div>
 
     <button id="helpBtn">?</button>
 
@@ -1507,6 +1613,9 @@
 
           <dt><kbd>P</kbd></dt>
           <dd>Toggle paint mode</dd>
+
+          <dt><kbd>L</kbd></dt>
+          <dd>Toggle lock mode</dd>
 
           <dt><kbd>S</kbd></dt>
           <dd>Stop all dots</dd>
@@ -1555,6 +1664,10 @@
           <button class="paint-mode-toggle" id="paintModeToggle">
             <span class="status-dot"></span>
             Paint Mode <span class="kbd-hint">(P)</span>
+          </button>
+          <button class="lock-mode-toggle" id="lockModeToggle">
+            <span class="status-dot"></span>
+            Lock Mode <span class="kbd-hint">(L)</span>
           </button>
         </div>
 
@@ -1705,6 +1818,9 @@
       // Paint mode state
       let paintMode = false;
       let selectedPaintColor = null;
+
+      // Lock mode state
+      let lockMode = false;
 
       // Color themes
       const themes = {
@@ -1974,6 +2090,7 @@
       // ========== UNIFIED COLLISION SOLVER ==========
       // Resolves collision between two dots using impulse-based elastic collision
       // Updates velocities and separates positions
+      // Locked dots act as immovable obstacles (infinite mass)
       function resolveCollision(dotA, dotB, velA, velB) {
         const dx = dotB.x - dotA.x;
         const dy = dotB.y - dotA.y;
@@ -1986,10 +2103,16 @@
         const nx = dx / dist;
         const ny = dy / dist;
 
-        // Masses
-        const mA = mass(dotA);
-        const mB = mass(dotB);
-        const totalMass = mA + mB;
+        // Handle locked dots as immovable (infinite mass)
+        const aLocked = dotA.locked;
+        const bLocked = dotB.locked;
+
+        // Both locked = no collision response needed
+        if (aLocked && bLocked) return false;
+
+        // Masses (locked dots treated as infinite mass)
+        const mA = aLocked ? Infinity : mass(dotA);
+        const mB = bLocked ? Infinity : mass(dotB);
 
         // Relative velocity (A relative to B)
         const relVx = velA.vx - velB.vx;
@@ -2000,16 +2123,29 @@
 
         // Only resolve if moving toward each other
         if (relVelNormal > 0) {
-          // Impulse scalar (use dynamic restitution from slider)
           const restitution = getRestitution();
-          const impulse =
-            ((1 + restitution) * relVelNormal) / (1 / mA + 1 / mB);
 
-          // Apply impulse to velocities
-          velA.vx -= (impulse / mA) * nx;
-          velA.vy -= (impulse / mA) * ny;
-          velB.vx += (impulse / mB) * nx;
-          velB.vy += (impulse / mB) * ny;
+          if (aLocked) {
+            // A is immovable - B bounces off
+            const impulse = (1 + restitution) * relVelNormal * mB;
+            velB.vx += (impulse / mB) * nx;
+            velB.vy += (impulse / mB) * ny;
+          } else if (bLocked) {
+            // B is immovable - A bounces off
+            const impulse = (1 + restitution) * relVelNormal * mA;
+            velA.vx -= (impulse / mA) * nx;
+            velA.vy -= (impulse / mA) * ny;
+          } else {
+            // Normal collision between two movable dots
+            const totalMass = mA + mB;
+            const impulse =
+              ((1 + restitution) * relVelNormal) / (1 / mA + 1 / mB);
+
+            velA.vx -= (impulse / mA) * nx;
+            velA.vy -= (impulse / mA) * ny;
+            velB.vx += (impulse / mB) * nx;
+            velB.vy += (impulse / mB) * ny;
+          }
 
           // Chain Reaction: propagate boost on hard collision
           if (chainReactionMode && chainReactionActive) {
@@ -2020,12 +2156,12 @@
               const aIsBoosted = boostedDots.has(dotA.id);
               const bIsBoosted = boostedDots.has(dotB.id);
 
-              if (aIsBoosted && !bIsBoosted) {
+              if (aIsBoosted && !bIsBoosted && !bLocked) {
                 boostedDots.add(dotB.id);
                 chainReactionScore++;
                 updateChainScoreDisplay();
               }
-              if (bIsBoosted && !aIsBoosted) {
+              if (bIsBoosted && !aIsBoosted && !aLocked) {
                 boostedDots.add(dotA.id);
                 chainReactionScore++;
                 updateChainScoreDisplay();
@@ -2034,15 +2170,28 @@
           }
         }
 
-        // Positional separation (mass-proportional)
+        // Positional separation
         const overlap = minDist - dist;
-        const separationA = overlap * (mB / totalMass);
-        const separationB = overlap * (mA / totalMass);
 
-        dotA.x -= nx * separationA;
-        dotA.y -= ny * separationA;
-        dotB.x += nx * separationB;
-        dotB.y += ny * separationB;
+        if (aLocked) {
+          // Only move B
+          dotB.x += nx * overlap;
+          dotB.y += ny * overlap;
+        } else if (bLocked) {
+          // Only move A
+          dotA.x -= nx * overlap;
+          dotA.y -= ny * overlap;
+        } else {
+          // Mass-proportional separation
+          const totalMass = mA + mB;
+          const separationA = overlap * (mB / totalMass);
+          const separationB = overlap * (mA / totalMass);
+
+          dotA.x -= nx * separationA;
+          dotA.y -= ny * separationA;
+          dotB.x += nx * separationB;
+          dotB.y += ny * separationB;
+        }
 
         return true;
       }
@@ -3014,8 +3163,8 @@
           .attr("cy", (d) => d.y)
           .attr("r", (d) => d.radius)
           .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", theme.dotStroke)
-          .attr("stroke-width", STROKE_WIDTH)
+          .attr("stroke", (d) => d.locked ? "#ffc107" : theme.dotStroke)
+          .attr("stroke-width", (d) => d.locked ? 3 : STROKE_WIDTH)
           .on("mousedown", onDotMouseDown)
           .on("mouseup", onDotMouseUp)
           .on("mouseleave", onDotMouseLeave)
@@ -3028,6 +3177,8 @@
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
           .attr("fill", (d) => d.color || theme.dotFill)
+          .attr("stroke", (d) => d.locked ? "#ffc107" : theme.dotStroke)
+          .attr("stroke-width", (d) => d.locked ? 3 : STROKE_WIDTH)
           .attr("r", (d) => d.radius);
       }
 
@@ -3205,6 +3356,22 @@
           return;
         }
 
+        // Handle lock mode
+        if (lockMode) {
+          d.locked = !d.locked;
+          // Stop the dot if locking it
+          if (d.locked) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            boostedDots.delete(d.id);
+          }
+          render();
+          return;
+        }
+
+        // Don't allow dragging locked dots
+        if (d.locked) return;
+
         holdDotId = d.id;
 
         const [mx, my] = d3.pointer(event, svg.node());
@@ -3278,6 +3445,21 @@
           render();
           return;
         }
+
+        // Handle lock mode
+        if (lockMode) {
+          d.locked = !d.locked;
+          if (d.locked) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            boostedDots.delete(d.id);
+          }
+          render();
+          return;
+        }
+
+        // Don't allow dragging locked dots
+        if (d.locked) return;
 
         const touch = event.touches[0];
         const [tx, ty] = [touch.clientX, touch.clientY];
@@ -3633,7 +3815,7 @@
           }
         }
 
-        // Step 2: Apply velocities to positions (only dragged dot if frozen)
+        // Step 2: Apply velocities to positions (only dragged dot if frozen, skip locked)
         for (const [dotId, vel] of dotVelocities) {
           if (isFrozen && dotId !== dragDotId) continue;
 
@@ -3643,16 +3825,22 @@
             continue;
           }
 
+          // Locked dots don't move
+          if (dot.locked) {
+            dotVelocities.delete(dotId);
+            continue;
+          }
+
           dot.x += vel.vx;
           dot.y += vel.vy;
         }
 
-        // Step 3: Boundary collisions (only for dragged dot if frozen)
+        // Step 3: Boundary collisions (only for dragged dot if frozen, skip locked)
         for (const [dotId, vel] of dotVelocities) {
           if (isFrozen && dotId !== dragDotId) continue;
 
           const dot = dots.find((d) => d.id === dotId);
-          if (!dot) continue;
+          if (!dot || dot.locked) continue;
 
           if (dot.x - dot.radius < 0) {
             dot.x = dot.radius;
@@ -3992,6 +4180,12 @@
           paintColorPreview.style.background = selectedPaintColor === "reset"
             ? "linear-gradient(135deg, #666 25%, #999 25%, #999 50%, #666 50%, #666 75%, #999 75%)"
             : selectedPaintColor;
+          // Exit lock mode if active
+          if (lockMode) {
+            lockMode = false;
+            lockModeToggle.classList.remove("active");
+            lockIndicator.classList.remove("active");
+          }
         }
       }
 
@@ -4018,6 +4212,40 @@
           paintMode = false;
           paintModeToggle.classList.remove("active");
           paintIndicator.classList.remove("active");
+        }
+      });
+
+      // Lock mode controls
+      const lockModeToggle = document.getElementById("lockModeToggle");
+      const lockIndicator = document.getElementById("lockIndicator");
+
+      function toggleLockMode() {
+        lockMode = !lockMode;
+        lockModeToggle.classList.toggle("active", lockMode);
+        lockIndicator.classList.toggle("active", lockMode);
+
+        if (lockMode) {
+          // Freeze all dots when entering lock mode
+          dotVelocities.clear();
+          noFrictionDots.clear();
+          boostedDots.clear();
+          // Exit paint mode if active
+          if (paintMode) {
+            paintMode = false;
+            paintModeToggle.classList.remove("active");
+            paintIndicator.classList.remove("active");
+          }
+        }
+      }
+
+      lockModeToggle.addEventListener("click", toggleLockMode);
+
+      // Click lock indicator to exit lock mode
+      lockIndicator.addEventListener("click", () => {
+        if (lockMode) {
+          lockMode = false;
+          lockModeToggle.classList.remove("active");
+          lockIndicator.classList.remove("active");
         }
       });
 
@@ -4271,6 +4499,7 @@
             y: d.y,
             radius: d.radius,
             color: d.color,
+            locked: d.locked,
           })),
           nextId: nextId,
           theme: currentTheme,
@@ -4400,6 +4629,9 @@
         if (e.key === "p" || e.key === "P") {
           togglePaintMode();
         }
+        if (e.key === "l" || e.key === "L") {
+          toggleLockMode();
+        }
         if (e.key === "s" || e.key === "S") {
           // Stop all dots
           for (const [dotId, vel] of dotVelocities) {
@@ -4428,6 +4660,12 @@
             paintMode = false;
             paintModeToggle.classList.remove("active");
             paintIndicator.classList.remove("active");
+          }
+          // Exit lock mode
+          if (lockMode) {
+            lockMode = false;
+            lockModeToggle.classList.remove("active");
+            lockIndicator.classList.remove("active");
           }
         }
       });
