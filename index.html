@@ -4301,12 +4301,12 @@
         orbitStrengthRow.style.display = "none";
         orbitHint.style.display = "none";
 
-        // Unmark the sun but keep it as a normal dot
+        // Restore the sun to a normal dot
         if (orbitSunId !== null) {
           const sun = dots.find(d => d.id === orbitSunId);
           if (sun) {
             sun.isSun = false;
-            // Keep it locked if it was already locked, otherwise unlock
+            sun.locked = false; // Unlock it so it can move again
           }
           orbitSunId = null;
           orbitingDots.clear();
