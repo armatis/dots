@@ -22,26 +22,37 @@
         height: 100vh;
       }
 
-      svg {
+      #gameCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: block;
+      }
+
+      #svgOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
         display: block;
         cursor: crosshair;
         touch-action: none;
       }
 
-      circle {
+      #svgOverlay circle {
         cursor: grab;
-        transition: r 0.15s ease-out;
+        fill: transparent;
+        stroke: transparent;
       }
 
-      circle:active {
+      #svgOverlay circle:active {
         cursor: grabbing;
       }
 
-      svg.dragging {
+      #svgOverlay.dragging {
         cursor: grabbing;
       }
 
-      svg.dragging circle {
+      #svgOverlay.dragging circle {
         cursor: grabbing;
       }
 
@@ -1447,7 +1458,8 @@
     </style>
   </head>
   <body>
-    <svg id="canvas"></svg>
+    <canvas id="gameCanvas"></canvas>
+    <svg id="svgOverlay"></svg>
 
     <div id="chainScoreHUD" class="game-hud">
       <div class="hud-label">Chain</div>
@@ -1993,16 +2005,24 @@
       }
 
       // ========== SETUP SVG ==========
+      // ========== CANVAS SETUP ==========
+      const gameCanvas = document.getElementById("gameCanvas");
+      const ctx = gameCanvas.getContext("2d");
+      gameCanvas.width = window.innerWidth;
+      gameCanvas.height = window.innerHeight;
+
+      // ========== SVG OVERLAY SETUP (for hit detection) ==========
       const svg = d3
-        .select("#canvas")
+        .select("#svgOverlay")
         .attr("width", window.innerWidth)
         .attr("height", window.innerHeight);
 
+      // Background rect for click detection (invisible)
       const background = svg
         .append("rect")
         .attr("width", window.innerWidth)
         .attr("height", window.innerHeight)
-        .attr("fill", "#0a3d62");
+        .attr("fill", "transparent");
 
       // Grid group (hidden by default)
       const gridGroup = svg
@@ -2053,11 +2073,16 @@
       const dotsGroup = svg.append("g");
 
       window.addEventListener("resize", () => {
+        // Resize canvas
+        gameCanvas.width = window.innerWidth;
+        gameCanvas.height = window.innerHeight;
+        // Resize SVG overlay
         svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
         background
           .attr("width", window.innerWidth)
           .attr("height", window.innerHeight);
         drawGrid();
+        renderCanvas();
       });
 
       // ========== UTILITY FUNCTIONS ==========
@@ -2414,37 +2439,8 @@
       }
 
       function renderGolfTarget() {
-        golfTargetGroup.selectAll("*").remove();
-        if (!golfTarget) return;
-
-        // Outer ring
-        golfTargetGroup
-          .append("circle")
-          .attr("cx", golfTarget.x)
-          .attr("cy", golfTarget.y)
-          .attr("r", golfTarget.radius)
-          .attr("fill", "rgba(255, 255, 255, 0.1)")
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 3)
-          .attr("stroke-dasharray", "10,5");
-
-        // Inner ring
-        golfTargetGroup
-          .append("circle")
-          .attr("cx", golfTarget.x)
-          .attr("cy", golfTarget.y)
-          .attr("r", golfTarget.radius * 0.5)
-          .attr("fill", "none")
-          .attr("stroke", "rgba(255,255,255,0.5)")
-          .attr("stroke-width", 2);
-
-        // Center dot
-        golfTargetGroup
-          .append("circle")
-          .attr("cx", golfTarget.x)
-          .attr("cy", golfTarget.y)
-          .attr("r", 5)
-          .attr("fill", "#fff");
+        // Golf target is now rendered on canvas in renderCanvas()
+        renderCanvas();
       }
 
       function updateGolfHUD() {
@@ -2587,45 +2583,8 @@
       }
 
       function renderBumpers() {
-        pinballBumperGroup.selectAll("*").remove();
-
-        for (const bumper of pinballBumpers) {
-          // Outer glow
-          pinballBumperGroup
-            .append("circle")
-            .attr("cx", bumper.x)
-            .attr("cy", bumper.y)
-            .attr("r", bumper.radius + 5)
-            .attr("fill", "none")
-            .attr(
-              "stroke",
-              bumper.type === "bonus"
-                ? "rgba(255, 215, 0, 0.5)"
-                : "rgba(255, 255, 255, 0.3)",
-            )
-            .attr("stroke-width", 3);
-
-          // Main bumper
-          pinballBumperGroup
-            .append("circle")
-            .attr("cx", bumper.x)
-            .attr("cy", bumper.y)
-            .attr("r", bumper.radius)
-            .attr("fill", bumper.type === "bonus" ? "#ffd700" : "#fff")
-            .attr("stroke", bumper.type === "bonus" ? "#b8860b" : "#ccc")
-            .attr("stroke-width", 2);
-
-          // Center point value
-          pinballBumperGroup
-            .append("text")
-            .attr("x", bumper.x)
-            .attr("y", bumper.y + 5)
-            .attr("text-anchor", "middle")
-            .attr("fill", bumper.type === "bonus" ? "#000" : "#333")
-            .attr("font-size", "12px")
-            .attr("font-weight", "bold")
-            .text(bumper.points);
-        }
+        // Bumpers are now rendered on canvas in renderCanvas()
+        renderCanvas();
       }
 
       function updatePinballHUD() {
@@ -3054,25 +3013,17 @@
       }
 
       function renderClusterDots() {
+        // SVG circles for hit detection only (invisible)
         const circles = clusterDotsGroup
           .selectAll("circle")
           .data(clusterDots, (d) => d.id);
 
         circles.exit().remove();
 
-        const entered = circles
+        circles
           .enter()
           .append("circle")
-          .attr("r", (d) => d.radius)
-          .attr("fill", (d) => d.color)
-          .attr("stroke", (d) => (d.isBlack ? "#000" : darkenColor(d.color)))
-          .attr("stroke-width", 2)
           .attr("cursor", (d) => (d.isBlack ? "grab" : "default"))
-          .style("filter", (d) =>
-            !d.isBlack && d.radius > 15
-              ? "drop-shadow(0 0 8px " + d.color + ")"
-              : "none",
-          )
           .on("mousedown", function (event, d) {
             if (d.isBlack) {
               event.stopPropagation();
@@ -3097,45 +3048,14 @@
               clusterDragOriginalPos = { x: d.x, y: d.y };
               svg.classed("dragging", true);
             }
-          });
-
-        entered
+          })
           .merge(circles)
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
-          .attr("r", (d) => d.radius)
-          .attr("fill", (d) => d.color)
-          .attr("stroke", (d) => (d.isBlack ? "#000" : darkenColor(d.color)))
-          .style("filter", (d) =>
-            !d.isBlack && d.radius > 15
-              ? "drop-shadow(0 0 8px " + d.color + ")"
-              : "none",
-          );
+          .attr("r", (d) => d.radius);
 
-        // Show hit indicators on colored dots being attacked
-        const hitIndicators = clusterDotsGroup
-          .selectAll("text.hit-indicator")
-          .data(
-            clusterDots.filter((d) => !d.isBlack && d.hitsTaken > 0),
-            (d) => d.id,
-          );
-
-        hitIndicators.exit().remove();
-
-        hitIndicators
-          .enter()
-          .append("text")
-          .attr("class", "hit-indicator")
-          .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "middle")
-          .attr("fill", "#fff")
-          .attr("font-size", "12px")
-          .attr("font-weight", "bold")
-          .attr("pointer-events", "none")
-          .merge(hitIndicators)
-          .attr("x", (d) => d.x)
-          .attr("y", (d) => d.y)
-          .text((d) => d.hitsTaken);
+        // Render visuals on canvas
+        renderCanvas();
       }
 
       function darkenColor(color) {
@@ -3178,25 +3098,152 @@
         bestLabel.textContent = "Best: " + formatClusterTime(clusterBest);
       }
 
-      // ========== RENDER ==========
+      // ========== CANVAS RENDER ==========
+      function renderCanvas() {
+        const theme = themes[currentTheme];
+        const width = gameCanvas.width;
+        const height = gameCanvas.height;
+
+        // Clear and draw background
+        ctx.fillStyle = theme.background;
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw grid if visible
+        if (gridGroup.style("display") !== "none") {
+          ctx.strokeStyle = "rgba(0,0,0,0.2)";
+          ctx.lineWidth = 0.5;
+          for (let x = 0; x <= width; x += GRID_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+          for (let y = 0; y <= height; y += GRID_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          }
+        }
+
+        // Draw golf target if in golf mode
+        if (golfMode && golfTarget) {
+          // Outer ring with dashed stroke
+          ctx.setLineDash([10, 5]);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(golfTarget.x, golfTarget.y, golfTarget.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Inner ring
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(golfTarget.x, golfTarget.y, golfTarget.radius * 0.5, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Center dot
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(golfTarget.x, golfTarget.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Draw pinball bumpers
+        if (pinballMode) {
+          for (const bumper of pinballBumpers) {
+            const isBonus = bumper.type === "bonus";
+
+            // Outer glow
+            ctx.strokeStyle = isBonus ? "rgba(255, 215, 0, 0.5)" : "rgba(255, 255, 255, 0.3)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(bumper.x, bumper.y, bumper.radius + 5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Main bumper circle
+            ctx.fillStyle = isBonus ? "#ffd700" : "#fff";
+            ctx.strokeStyle = isBonus ? "#b8860b" : "#ccc";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(bumper.x, bumper.y, bumper.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Point value text
+            ctx.fillStyle = isBonus ? "#000" : "#333";
+            ctx.font = "bold 12px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(bumper.points.toString(), bumper.x, bumper.y);
+          }
+        }
+
+        // Draw cluster dots
+        if (clusterMode) {
+          for (const dot of clusterDots) {
+            // Draw glow effect for large colored dots
+            if (!dot.isBlack && dot.radius > 15) {
+              ctx.shadowColor = dot.color;
+              ctx.shadowBlur = 8;
+            }
+
+            ctx.fillStyle = dot.color;
+            ctx.strokeStyle = dot.isBlack ? "#000" : darkenColor(dot.color);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Reset shadow
+            ctx.shadowBlur = 0;
+
+            // Draw hit indicator for colored dots being attacked
+            if (!dot.isBlack && dot.hitsTaken > 0) {
+              ctx.fillStyle = "#fff";
+              ctx.font = "bold 12px 'JetBrains Mono', monospace";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(dot.hitsTaken.toString(), dot.x, dot.y);
+            }
+          }
+        }
+
+        // Draw main dots
+        for (const dot of dots) {
+          const fillColor = dot.color || theme.dotFill;
+          let strokeColor = theme.dotStroke;
+          let strokeWidth = STROKE_WIDTH;
+
+          if (dot.isSun) {
+            strokeColor = "#FF8C00";
+            strokeWidth = 4;
+          } else if (dot.locked) {
+            strokeColor = "#ffc107";
+            strokeWidth = 3;
+          }
+
+          ctx.fillStyle = fillColor;
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      // ========== SVG HIT DETECTION LAYER ==========
       function render() {
+        // Update invisible SVG circles for hit detection only
         const circles = dotsGroup.selectAll("circle").data(dots, (d) => d.id);
 
         circles.exit().remove();
-
-        const theme = themes[currentTheme];
-
-        function getStroke(d) {
-          if (d.isSun) return "#FF8C00"; // Dark orange for sun
-          if (d.locked) return "#ffc107";
-          return theme.dotStroke;
-        }
-
-        function getStrokeWidth(d) {
-          if (d.isSun) return 4;
-          if (d.locked) return 3;
-          return STROKE_WIDTH;
-        }
 
         circles
           .enter()
@@ -3204,9 +3251,6 @@
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
           .attr("r", (d) => d.radius)
-          .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", getStroke)
-          .attr("stroke-width", getStrokeWidth)
           .on("mousedown", onDotMouseDown)
           .on("mouseup", onDotMouseUp)
           .on("mouseleave", onDotMouseLeave)
@@ -3215,13 +3259,14 @@
           .on("touchend", onDotTouchEnd)
           .on("touchmove", onDotTouchMove);
 
+        // Update positions for hit detection
         circles
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
-          .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", getStroke)
-          .attr("stroke-width", getStrokeWidth)
           .attr("r", (d) => d.radius);
+
+        // Render visuals on canvas
+        renderCanvas();
       }
 
       // ========== DOT CREATION ==========
@@ -4665,15 +4710,11 @@
 
         currentTheme = themeName;
 
-        // Update background
+        // Update body background (fallback)
         document.body.style.background = theme.background;
-        background.attr("fill", theme.background);
 
-        // Update existing dots
-        dotsGroup
-          .selectAll("circle")
-          .attr("fill", theme.dotFill)
-          .attr("stroke", theme.dotStroke);
+        // Re-render canvas with new theme
+        renderCanvas();
 
         // Update UI elements that need theme colors
         document.querySelectorAll("#modifiers .modifier").forEach((el) => {
