@@ -347,6 +347,145 @@
         opacity: 0.7;
       }
 
+      /* Paint Palette */
+      .paint-palette {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .paint-swatch {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+      }
+
+      .paint-swatch:hover {
+        transform: scale(1.15);
+        box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+      }
+
+      .paint-swatch.selected {
+        border-color: var(--accent);
+        box-shadow: 0 0 16px var(--accent-glow), inset 0 0 8px rgba(0, 0, 0, 0.3);
+        transform: scale(1.1);
+      }
+
+      .paint-swatch.selected::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 10px;
+        height: 10px;
+        background: var(--accent);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--accent);
+      }
+
+      .paint-swatch.reset {
+        background: linear-gradient(135deg, #666 25%, #999 25%, #999 50%, #666 50%, #666 75%, #999 75%);
+        background-size: 8px 8px;
+      }
+
+      .paint-mode-toggle {
+        width: 100%;
+        padding: 10px 14px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-secondary);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .paint-mode-toggle:hover {
+        background: rgba(130, 204, 221, 0.1);
+        border-color: var(--accent-dim);
+        color: var(--text-primary);
+      }
+
+      .paint-mode-toggle.active {
+        background: rgba(130, 204, 221, 0.2);
+        border-color: var(--accent);
+        color: var(--accent);
+        box-shadow: 0 0 16px var(--panel-glow), inset 0 0 12px var(--panel-glow);
+      }
+
+      .paint-mode-toggle .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+        transition: all 0.25s ease;
+      }
+
+      .paint-mode-toggle.active .status-dot {
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+        animation: pulse-glow 1.5s ease-in-out infinite;
+      }
+
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 8px var(--accent); }
+        50% { box-shadow: 0 0 16px var(--accent), 0 0 24px var(--accent-glow); }
+      }
+
+      /* Paint Mode Indicator */
+      #paintIndicator {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        padding: 16px 32px;
+        background: var(--panel-bg);
+        color: var(--accent);
+        border: 1px solid var(--accent-dim);
+        border-radius: 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 3px;
+        pointer-events: none;
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 150;
+        box-shadow:
+          0 0 60px var(--panel-glow),
+          0 8px 32px rgba(0, 0, 0, 0.5),
+          inset 0 0 30px var(--panel-glow);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        text-shadow: 0 0 20px var(--accent-glow);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      #paintIndicator.active {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      #paintIndicator .color-preview {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+      }
+
       /* Action Buttons */
       .action-btn {
         width: 100%;
@@ -1311,6 +1450,7 @@
     </div>
 
     <div id="freezeIndicator">❄ FROZEN</div>
+    <div id="paintIndicator">PAINT MODE <span class="color-preview" id="paintColorPreview"></span></div>
 
     <button id="helpBtn">?</button>
 
@@ -1342,6 +1482,9 @@
           <dt><kbd>F</kbd></dt>
           <dd>Toggle freeze mode</dd>
 
+          <dt><kbd>P</kbd></dt>
+          <dd>Toggle paint mode</dd>
+
           <dt><kbd>S</kbd></dt>
           <dd>Stop all dots</dd>
 
@@ -1371,6 +1514,25 @@
             <input type="range" id="countSlider" min="1" max="12" value="1" />
             <span class="value" id="countValue">1</span>
           </div>
+        </div>
+
+        <div class="control-section">
+          <h3>Paint</h3>
+          <div class="paint-palette">
+            <div class="paint-swatch reset" data-color="reset" title="Reset to theme"></div>
+            <div class="paint-swatch" data-color="#ff6b6b" style="background: #ff6b6b" title="Red"></div>
+            <div class="paint-swatch" data-color="#ffa94d" style="background: #ffa94d" title="Orange"></div>
+            <div class="paint-swatch" data-color="#ffd43b" style="background: #ffd43b" title="Yellow"></div>
+            <div class="paint-swatch" data-color="#69db7c" style="background: #69db7c" title="Green"></div>
+            <div class="paint-swatch" data-color="#4dabf7" style="background: #4dabf7" title="Blue"></div>
+            <div class="paint-swatch" data-color="#da77f2" style="background: #da77f2" title="Purple"></div>
+            <div class="paint-swatch" data-color="#ffffff" style="background: #ffffff" title="White"></div>
+            <div class="paint-swatch" data-color="#1a1a2e" style="background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2)" title="Black"></div>
+          </div>
+          <button class="paint-mode-toggle" id="paintModeToggle">
+            <span class="status-dot"></span>
+            Paint Mode <span class="kbd-hint">(P)</span>
+          </button>
         </div>
 
         <div class="control-section">
@@ -1516,6 +1678,10 @@
 
       // Freeze state
       let isFrozen = false;
+
+      // Paint mode state
+      let paintMode = false;
+      let selectedPaintColor = null;
 
       // Color themes
       const themes = {
@@ -2824,7 +2990,7 @@
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
           .attr("r", (d) => d.radius)
-          .attr("fill", theme.dotFill)
+          .attr("fill", (d) => d.color || theme.dotFill)
           .attr("stroke", theme.dotStroke)
           .attr("stroke-width", STROKE_WIDTH)
           .on("mousedown", onDotMouseDown)
@@ -2838,6 +3004,7 @@
         circles
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
+          .attr("fill", (d) => d.color || theme.dotFill)
           .attr("r", (d) => d.radius);
       }
 
@@ -3003,6 +3170,18 @@
       // ========== DOT EVENT HANDLERS ==========
       function onDotMouseDown(event, d) {
         event.stopPropagation();
+
+        // Handle paint mode
+        if (paintMode && selectedPaintColor) {
+          if (selectedPaintColor === "reset") {
+            delete d.color;
+          } else {
+            d.color = selectedPaintColor;
+          }
+          render();
+          return;
+        }
+
         holdDotId = d.id;
 
         const [mx, my] = d3.pointer(event, svg.node());
@@ -3065,6 +3244,17 @@
       function onDotTouchStart(event, d) {
         event.preventDefault();
         event.stopPropagation();
+
+        // Handle paint mode
+        if (paintMode && selectedPaintColor) {
+          if (selectedPaintColor === "reset") {
+            delete d.color;
+          } else {
+            d.color = selectedPaintColor;
+          }
+          render();
+          return;
+        }
 
         const touch = event.touches[0];
         const [tx, ty] = [touch.clientX, touch.clientY];
@@ -3754,6 +3944,51 @@
         }
       });
 
+      // Paint mode controls
+      const paintModeToggle = document.getElementById("paintModeToggle");
+      const paintIndicator = document.getElementById("paintIndicator");
+      const paintColorPreview = document.getElementById("paintColorPreview");
+      const paintSwatches = document.querySelectorAll(".paint-swatch");
+
+      function togglePaintMode() {
+        if (!selectedPaintColor) {
+          // Default to first color if none selected
+          selectedPaintColor = "#ff6b6b";
+          paintSwatches.forEach(s => s.classList.remove("selected"));
+          document.querySelector('.paint-swatch[data-color="#ff6b6b"]').classList.add("selected");
+        }
+        paintMode = !paintMode;
+        paintModeToggle.classList.toggle("active", paintMode);
+        paintIndicator.classList.toggle("active", paintMode);
+
+        if (paintMode) {
+          // Freeze all dots when entering paint mode
+          dotVelocities.clear();
+          noFrictionDots.clear();
+          boostedDots.clear();
+          paintColorPreview.style.background = selectedPaintColor === "reset"
+            ? "linear-gradient(135deg, #666 25%, #999 25%, #999 50%, #666 50%, #666 75%, #999 75%)"
+            : selectedPaintColor;
+        }
+      }
+
+      paintModeToggle.addEventListener("click", togglePaintMode);
+
+      // Paint swatch selection
+      paintSwatches.forEach(swatch => {
+        swatch.addEventListener("click", () => {
+          paintSwatches.forEach(s => s.classList.remove("selected"));
+          swatch.classList.add("selected");
+          selectedPaintColor = swatch.dataset.color;
+
+          if (paintMode) {
+            paintColorPreview.style.background = selectedPaintColor === "reset"
+              ? "linear-gradient(135deg, #666 25%, #999 25%, #999 50%, #666 50%, #666 75%, #999 75%)"
+              : selectedPaintColor;
+          }
+        });
+      });
+
       // Chain Reaction controls
       const chainReactionToggle = document.getElementById(
         "chainReactionToggle",
@@ -4003,6 +4238,7 @@
             x: d.x,
             y: d.y,
             radius: d.radius,
+            color: d.color,
           })),
           nextId: nextId,
           theme: currentTheme,
@@ -4129,6 +4365,9 @@
             boostedDots.clear();
           }
         }
+        if (e.key === "p" || e.key === "P") {
+          togglePaintMode();
+        }
         if (e.key === "s" || e.key === "S") {
           // Stop all dots
           for (const [dotId, vel] of dotVelocities) {
@@ -4152,6 +4391,12 @@
         if (e.key === "Escape") {
           helpModal.classList.remove("visible");
           controlsPanel.classList.remove("open");
+          // Exit paint mode
+          if (paintMode) {
+            paintMode = false;
+            paintModeToggle.classList.remove("active");
+            paintIndicator.classList.remove("active");
+          }
         }
       });
 
