@@ -1617,12 +1617,6 @@
           <dt><kbd>L</kbd></dt>
           <dd>Toggle lock mode</dd>
 
-          <dt><kbd>G</kbd></dt>
-          <dd>Toggle gravity</dd>
-
-          <dt><kbd>↑</kbd> / <kbd>↓</kbd></dt>
-          <dd>Adjust gravity strength</dd>
-
           <dt><kbd>S</kbd></dt>
           <dd>Stop all dots</dd>
 
@@ -1713,21 +1707,6 @@
               value="85"
             />
             <span class="value" id="bounceValue">85</span>
-          </div>
-          <div class="control-row">
-            <label for="gravityToggle">Gravity <span class="kbd-hint">(G)</span></label>
-            <input type="checkbox" id="gravityToggle" />
-          </div>
-          <div class="control-row" id="gravityStrengthRow">
-            <label for="gravityStrength">Pull <span class="kbd-hint">(↑↓)</span></label>
-            <input
-              type="range"
-              id="gravityStrength"
-              min="1"
-              max="100"
-              value="50"
-            />
-            <span class="value" id="gravityStrengthValue">50</span>
           </div>
         </div>
 
@@ -1842,10 +1821,6 @@
 
       // Lock mode state
       let lockMode = false;
-
-      // Gravity state
-      let gravityEnabled = false;
-      const GRAVITY_BASE = 0.02; // Base gravitational acceleration
 
       // Color themes
       const themes = {
@@ -3840,60 +3815,6 @@
           }
         }
 
-        // Step 1.5: Apply gravitational attraction (small dots toward large dots)
-        if (gravityEnabled && !isFrozen) {
-          const gravityStrength = getGravityStrength();
-
-          for (let i = 0; i < dots.length; i++) {
-            const dotA = dots[i];
-            if (dotA.locked) continue; // Locked dots don't get pulled
-
-            const mA = mass(dotA);
-
-            for (let j = 0; j < dots.length; j++) {
-              if (i === j) continue;
-              const dotB = dots[j];
-
-              const mB = mass(dotB);
-
-              // Only attract toward larger dots
-              if (mB <= mA) continue;
-
-              const dx = dotB.x - dotA.x;
-              const dy = dotB.y - dotA.y;
-              const dist = Math.sqrt(dx * dx + dy * dy);
-
-              // Skip if overlapping (collision handles this)
-              const minDist = dotA.radius + dotB.radius;
-              if (dist < minDist * 1.1) continue;
-
-              // Game-friendly gravity: stronger at close range, with max distance
-              const maxRange = 300; // Max range of gravitational effect
-              if (dist > maxRange) continue;
-
-              // Force increases as you get closer (inverse linear, capped)
-              // Also scales with mass ratio (bigger = stronger pull)
-              const massRatio = mB / mA;
-              const distanceFactor = 1 - (dist / maxRange); // 1 at center, 0 at edge
-              const forceMag = GRAVITY_BASE * gravityStrength * massRatio * distanceFactor;
-
-              // Direction toward larger dot
-              const nx = dx / dist;
-              const ny = dy / dist;
-
-              // Apply force to velocity
-              let vel = dotVelocities.get(dotA.id);
-              if (!vel) {
-                vel = { vx: 0, vy: 0 };
-                dotVelocities.set(dotA.id, vel);
-              }
-
-              vel.vx += nx * forceMag;
-              vel.vy += ny * forceMag;
-            }
-          }
-        }
-
         // Step 2: Apply velocities to positions (only dragged dot if frozen, skip locked)
         for (const [dotId, vel] of dotVelocities) {
           if (isFrozen && dotId !== dragDotId) continue;
@@ -4218,31 +4139,6 @@
 
       function getRestitution() {
         return parseFloat(bounceSlider.value) / 100;
-      }
-
-      function getGravityStrength() {
-        const slider = document.getElementById("gravityStrength");
-        return slider ? parseFloat(slider.value) / 50 : 1; // Normalize: 50 = 1x, 100 = 2x
-      }
-
-      // Gravity toggle
-      const gravityToggle = document.getElementById("gravityToggle");
-      const gravityStrengthRow = document.getElementById("gravityStrengthRow");
-      const gravityStrengthSlider = document.getElementById("gravityStrength");
-      const gravityStrengthValue = document.getElementById("gravityStrengthValue");
-
-      gravityToggle.addEventListener("change", () => {
-        gravityEnabled = gravityToggle.checked;
-      });
-
-      gravityStrengthSlider.addEventListener("input", () => {
-        gravityStrengthValue.textContent = gravityStrengthSlider.value;
-      });
-
-      function adjustGravityStrength(delta) {
-        const newVal = Math.max(1, Math.min(100, parseInt(gravityStrengthSlider.value) + delta));
-        gravityStrengthSlider.value = newVal;
-        gravityStrengthValue.textContent = newVal;
       }
 
       // Freeze toggle
@@ -4735,18 +4631,6 @@
         }
         if (e.key === "l" || e.key === "L") {
           toggleLockMode();
-        }
-        if (e.key === "g" || e.key === "G") {
-          gravityEnabled = !gravityEnabled;
-          gravityToggle.checked = gravityEnabled;
-        }
-        if (e.key === "ArrowUp") {
-          adjustGravityStrength(10);
-          e.preventDefault();
-        }
-        if (e.key === "ArrowDown") {
-          adjustGravityStrength(-10);
-          e.preventDefault();
         }
         if (e.key === "s" || e.key === "S") {
           // Stop all dots
