@@ -4146,11 +4146,12 @@
 
         render();
 
-        // Continue loop if any dots are moving OR dragging is active OR cluster mode active
+        // Continue loop if any dots are moving OR dragging is active OR cluster mode active OR orbit mode with attractor
         if (
           dotVelocities.size > 0 ||
           isDragging ||
-          (clusterMode && clusterRoundActive)
+          (clusterMode && clusterRoundActive) ||
+          (orbitMode && orbitSunId !== null)
         ) {
           physicsAnimationId = requestAnimationFrame(physicsLoop);
         } else {
@@ -4354,6 +4355,9 @@
         boostedDots.delete(dot.id);
 
         render();
+
+        // Start physics loop so gravity runs continuously
+        startPhysicsLoop();
       }
 
       orbitToggle.addEventListener("change", () => {
