@@ -27,7 +27,7 @@
         top: 0;
         left: 0;
         display: block;
-        cursor: crosshair;
+        cursor: pointer;
         touch-action: none;
       }
 
@@ -3583,7 +3583,84 @@
         }
       }
 
-      // ========== GROW / SHRINK ==========
+      // ========== GROW / SHRINK WITH ANIMATION ==========
+      const SIZE_ANIMATION_DURATION = 150; // ms
+      const activeAnimations = new Map(); // dotId -> {startRadius, targetRadius, startTime, startX, startY, targetX, targetY}
+
+      function easeOutBack(t) {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+      }
+
+      function animateDotRadius(id, targetRadius, targetX = null, targetY = null) {
+        const dot = dots.find((d) => d.id === id);
+        if (!dot) return;
+
+        activeAnimations.set(id, {
+          startRadius: dot.radius,
+          targetRadius: targetRadius,
+          startTime: performance.now(),
+          startX: dot.x,
+          startY: dot.y,
+          targetX: targetX !== null ? targetX : dot.x,
+          targetY: targetY !== null ? targetY : dot.y
+        });
+
+        startAnimationLoop();
+      }
+
+      let animationLoopId = null;
+      function startAnimationLoop() {
+        if (animationLoopId) return;
+        animationLoopId = requestAnimationFrame(updateAnimations);
+      }
+
+      function updateAnimations(timestamp) {
+        let hasActiveAnimations = false;
+
+        for (const [id, anim] of activeAnimations) {
+          const dot = dots.find((d) => d.id === id);
+          if (!dot) {
+            activeAnimations.delete(id);
+            continue;
+          }
+
+          const elapsed = timestamp - anim.startTime;
+          const progress = Math.min(elapsed / SIZE_ANIMATION_DURATION, 1);
+          const eased = easeOutBack(progress);
+
+          dot.radius = anim.startRadius + (anim.targetRadius - anim.startRadius) * eased;
+          dot.x = anim.startX + (anim.targetX - anim.startX) * eased;
+          dot.y = anim.startY + (anim.targetY - anim.startY) * eased;
+
+          if (progress >= 1) {
+            activeAnimations.delete(id);
+            if (anim.removeOnComplete) {
+              // Remove the dot completely
+              dots = dots.filter((d) => d.id !== id);
+              dotVelocities.delete(id);
+              noFrictionDots.delete(id);
+              boostedDots.delete(id);
+            } else {
+              dot.radius = anim.targetRadius;
+              dot.x = anim.targetX;
+              dot.y = anim.targetY;
+            }
+          } else {
+            hasActiveAnimations = true;
+          }
+        }
+
+        render();
+
+        if (hasActiveAnimations) {
+          animationLoopId = requestAnimationFrame(updateAnimations);
+        } else {
+          animationLoopId = null;
+        }
+      }
+
       function growDot(id) {
         const dot = dots.find((d) => d.id === id);
         if (!dot) return;
@@ -3592,8 +3669,7 @@
         const radiusIncrease = newRadius - dot.radius;
 
         if (!wouldOverlap(dot.x, dot.y, newRadius, id)) {
-          dot.radius = newRadius;
-          render();
+          animateDotRadius(id, newRadius);
           return;
         }
 
@@ -3629,10 +3705,7 @@
         const newY = dot.y + shiftY * radiusIncrease;
 
         if (!wouldOverlap(newX, newY, newRadius, id)) {
-          dot.x = newX;
-          dot.y = newY;
-          dot.radius = newRadius;
-          render();
+          animateDotRadius(id, newRadius, newX, newY);
         }
       }
 
@@ -3642,14 +3715,21 @@
 
         const newRadius = dot.radius / 2;
         if (newRadius < MIN_RADIUS) {
-          dots = dots.filter((d) => d.id !== id);
-          dotVelocities.delete(id);
-          noFrictionDots.delete(id);
-          boostedDots.delete(id);
+          // Animate shrink to zero then remove
+          activeAnimations.set(id, {
+            startRadius: dot.radius,
+            targetRadius: 0,
+            startTime: performance.now(),
+            startX: dot.x,
+            startY: dot.y,
+            targetX: dot.x,
+            targetY: dot.y,
+            removeOnComplete: true
+          });
+          startAnimationLoop();
         } else {
-          dot.radius = newRadius;
+          animateDotRadius(id, newRadius);
         }
-        render();
       }
 
       // ========== HOLD TIMER ==========
