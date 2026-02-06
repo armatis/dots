@@ -27,32 +27,19 @@
         top: 0;
         left: 0;
         display: block;
-      }
-
-      #svgOverlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        display: block;
         cursor: crosshair;
         touch-action: none;
       }
 
-      #svgOverlay circle {
+      #gameCanvas.dragging {
+        cursor: grabbing;
+      }
+
+      #gameCanvas.hovering-dot {
         cursor: grab;
-        fill: transparent;
-        stroke: transparent;
       }
 
-      #svgOverlay circle:active {
-        cursor: grabbing;
-      }
-
-      #svgOverlay.dragging {
-        cursor: grabbing;
-      }
-
-      #svgOverlay.dragging circle {
+      #gameCanvas.dragging.hovering-dot {
         cursor: grabbing;
       }
 
@@ -1459,7 +1446,6 @@
   </head>
   <body>
     <canvas id="gameCanvas"></canvas>
-    <svg id="svgOverlay"></svg>
 
     <div id="chainScoreHUD" class="game-hud">
       <div class="hud-label">Chain</div>
@@ -2011,79 +1997,372 @@
       gameCanvas.width = window.innerWidth;
       gameCanvas.height = window.innerHeight;
 
-      // ========== SVG OVERLAY SETUP (for hit detection) ==========
-      const svg = d3
-        .select("#svgOverlay")
-        .attr("width", window.innerWidth)
-        .attr("height", window.innerHeight);
-
-      // Background rect for click detection (invisible)
-      const background = svg
-        .append("rect")
-        .attr("width", window.innerWidth)
-        .attr("height", window.innerHeight)
-        .attr("fill", "transparent");
-
-      // Grid group (hidden by default)
-      const gridGroup = svg
-        .append("g")
-        .attr("class", "grid")
-        .style("display", "none");
-
-      function drawGrid() {
-        gridGroup.selectAll("*").remove();
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        for (let x = 0; x <= width; x += GRID_SIZE) {
-          gridGroup
-            .append("line")
-            .attr("x1", x)
-            .attr("y1", 0)
-            .attr("x2", x)
-            .attr("y2", height)
-            .attr("stroke", "rgba(0,0,0,0.2)")
-            .attr("stroke-width", 0.5);
+      // ========== HIT DETECTION ==========
+      function findDotAtPoint(x, y, dotArray = dots) {
+        // Search in reverse order so topmost dots are found first
+        for (let i = dotArray.length - 1; i >= 0; i--) {
+          const dot = dotArray[i];
+          const dx = x - dot.x;
+          const dy = y - dot.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= dot.radius) {
+            return dot;
+          }
         }
-        for (let y = 0; y <= height; y += GRID_SIZE) {
-          gridGroup
-            .append("line")
-            .attr("x1", 0)
-            .attr("y1", y)
-            .attr("x2", width)
-            .attr("y2", y)
-            .attr("stroke", "rgba(0,0,0,0.2)")
-            .attr("stroke-width", 0.5);
-        }
+        return null;
       }
-      drawGrid();
 
-      // Golf target group (behind everything)
-      const golfTargetGroup = svg.append("g").attr("class", "golf-target");
+      function findClusterDotAtPoint(x, y) {
+        return findDotAtPoint(x, y, clusterDots);
+      }
 
-      // Pinball bumper group
-      const pinballBumperGroup = svg
-        .append("g")
-        .attr("class", "pinball-bumpers");
-
-      // Cluster dots group
-      const clusterDotsGroup = svg.append("g").attr("class", "cluster-dots");
-
-
-      const dotsGroup = svg.append("g");
+      // Grid visibility state
+      let showGrid = false;
 
       window.addEventListener("resize", () => {
-        // Resize canvas
         gameCanvas.width = window.innerWidth;
         gameCanvas.height = window.innerHeight;
-        // Resize SVG overlay
-        svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
-        background
-          .attr("width", window.innerWidth)
-          .attr("height", window.innerHeight);
-        drawGrid();
         renderCanvas();
       });
+
+      // ========== CANVAS EVENT HANDLERS ==========
+      function getCanvasCoords(event) {
+        const rect = gameCanvas.getBoundingClientRect();
+        if (event.touches) {
+          return {
+            x: event.touches[0].clientX - rect.left,
+            y: event.touches[0].clientY - rect.top
+          };
+        }
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      // Track hovered dot for cursor changes
+      gameCanvas.addEventListener("mousemove", function(event) {
+        const coords = getCanvasCoords(event);
+
+        // Handle cluster drag
+        if (clusterDragDotId !== null) {
+          const dx = coords.x - clusterDragStartPos.x;
+          const dy = coords.y - clusterDragStartPos.y;
+          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
+          if (dot) {
+            const newX = clusterDragOriginalPos.x + dx;
+            const newY = clusterDragOriginalPos.y + dy;
+            if (clusterDragLastPos) {
+              clusterDragVelocity.vx = (newX - clusterDragLastPos.x) * 0.5 + clusterDragVelocity.vx * 0.5;
+              clusterDragVelocity.vy = (newY - clusterDragLastPos.y) * 0.5 + clusterDragVelocity.vy * 0.5;
+            }
+            clusterDragLastPos = { x: newX, y: newY };
+            dot.x = Math.max(dot.radius, Math.min(window.innerWidth - dot.radius, newX));
+            dot.y = Math.max(dot.radius, Math.min(window.innerHeight - dot.radius, newY));
+          }
+          return;
+        }
+
+        // Handle regular dot drag
+        if (dragDotId !== null) {
+          const dx = coords.x - dragStartPos.x;
+          const dy = coords.y - dragStartPos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (!isDragging && distance > DRAG_THRESHOLD) {
+            isDragging = true;
+            clearHoldTimer();
+            gameCanvas.classList.add("dragging");
+            startPhysicsLoop();
+          }
+
+          if (isDragging) {
+            dragTargetPos = {
+              x: dragOriginalPos.x + dx,
+              y: dragOriginalPos.y + dy,
+            };
+          }
+          return;
+        }
+
+        // Update cursor based on hover
+        const dot = findDotAtPoint(coords.x, coords.y);
+        const clusterDot = clusterMode ? findClusterDotAtPoint(coords.x, coords.y) : null;
+        if (dot || (clusterDot && clusterDot.isBlack)) {
+          gameCanvas.classList.add("hovering-dot");
+        } else {
+          gameCanvas.classList.remove("hovering-dot");
+        }
+      });
+
+      gameCanvas.addEventListener("mousedown", function(event) {
+        const coords = getCanvasCoords(event);
+
+        // Check cluster dots first (in cluster mode)
+        if (clusterMode) {
+          const clusterDot = findClusterDotAtPoint(coords.x, coords.y);
+          if (clusterDot && clusterDot.isBlack) {
+            clusterDragDotId = clusterDot.id;
+            clusterDragStartPos = { x: coords.x, y: coords.y };
+            clusterDragOriginalPos = { x: clusterDot.x, y: clusterDot.y };
+            gameCanvas.classList.add("dragging");
+            return;
+          }
+        }
+
+        // Check regular dots
+        const dot = findDotAtPoint(coords.x, coords.y);
+        if (dot) {
+          handleDotMouseDown(dot, coords.x, coords.y);
+        }
+      });
+
+      gameCanvas.addEventListener("mouseup", function(event) {
+        if (clusterDragDotId !== null) {
+          finalizeClusterDrag();
+          return;
+        }
+        finalizeDrag();
+        gameCanvas.classList.remove("dragging");
+      });
+
+      gameCanvas.addEventListener("mouseleave", function(event) {
+        if (!isDragging) {
+          clearHoldTimer();
+        }
+        gameCanvas.classList.remove("hovering-dot");
+      });
+
+      gameCanvas.addEventListener("dblclick", function(event) {
+        event.preventDefault();
+        const coords = getCanvasCoords(event);
+        const dot = findDotAtPoint(coords.x, coords.y);
+        if (dot) {
+          handleDotDoubleClick(dot);
+        } else {
+          createDot(coords.x, coords.y);
+        }
+      });
+
+      // Touch events
+      gameCanvas.addEventListener("touchstart", function(event) {
+        event.preventDefault();
+        const coords = getCanvasCoords(event);
+
+        // Check cluster dots first
+        if (clusterMode) {
+          const clusterDot = findClusterDotAtPoint(coords.x, coords.y);
+          if (clusterDot && clusterDot.isBlack) {
+            clusterDragDotId = clusterDot.id;
+            clusterDragStartPos = { x: coords.x, y: coords.y };
+            clusterDragOriginalPos = { x: clusterDot.x, y: clusterDot.y };
+            gameCanvas.classList.add("dragging");
+            return;
+          }
+        }
+
+        // Check regular dots
+        const dot = findDotAtPoint(coords.x, coords.y);
+        const touch = event.touches[0];
+        const now = Date.now();
+
+        // Check for double-tap
+        if (lastTapTime && now - lastTapTime < DOUBLE_TAP_THRESHOLD && lastTapPos) {
+          const dist = Math.sqrt((touch.clientX - lastTapPos.x) ** 2 + (touch.clientY - lastTapPos.y) ** 2);
+          if (dist < DOUBLE_TAP_DISTANCE) {
+            lastTapTime = 0;
+            lastTapPos = null;
+            if (dot) {
+              handleDotDoubleClick(dot);
+            } else {
+              createDot(coords.x, coords.y);
+            }
+            return;
+          }
+        }
+        lastTapTime = now;
+        lastTapPos = { x: touch.clientX, y: touch.clientY };
+
+        if (dot) {
+          handleDotTouchStart(dot, coords.x, coords.y);
+        }
+      }, { passive: false });
+
+      gameCanvas.addEventListener("touchmove", function(event) {
+        event.preventDefault();
+        const coords = getCanvasCoords(event);
+
+        if (clusterDragDotId !== null) {
+          const dx = coords.x - clusterDragStartPos.x;
+          const dy = coords.y - clusterDragStartPos.y;
+          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
+          if (dot) {
+            const newX = clusterDragOriginalPos.x + dx;
+            const newY = clusterDragOriginalPos.y + dy;
+            if (clusterDragLastPos) {
+              clusterDragVelocity.vx = (newX - clusterDragLastPos.x) * 0.5 + clusterDragVelocity.vx * 0.5;
+              clusterDragVelocity.vy = (newY - clusterDragLastPos.y) * 0.5 + clusterDragVelocity.vy * 0.5;
+            }
+            clusterDragLastPos = { x: newX, y: newY };
+            dot.x = Math.max(dot.radius, Math.min(window.innerWidth - dot.radius, newX));
+            dot.y = Math.max(dot.radius, Math.min(window.innerHeight - dot.radius, newY));
+          }
+          return;
+        }
+
+        if (dragDotId !== null) {
+          const dx = coords.x - dragStartPos.x;
+          const dy = coords.y - dragStartPos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (!isDragging && distance > DRAG_THRESHOLD) {
+            isDragging = true;
+            clearHoldTimer();
+            gameCanvas.classList.add("dragging");
+            startPhysicsLoop();
+          }
+
+          if (isDragging) {
+            dragTargetPos = {
+              x: dragOriginalPos.x + dx,
+              y: dragOriginalPos.y + dy,
+            };
+          }
+        }
+      }, { passive: false });
+
+      gameCanvas.addEventListener("touchend", function(event) {
+        if (clusterDragDotId !== null) {
+          finalizeClusterDrag();
+          return;
+        }
+        finalizeDrag();
+        gameCanvas.classList.remove("dragging");
+      });
+
+      // ========== DOT INTERACTION HANDLERS ==========
+      function handleDotMouseDown(d, mx, my) {
+        // Handle paint mode
+        if (paintMode && selectedPaintColor) {
+          if (selectedPaintColor === "reset") {
+            delete d.color;
+          } else {
+            d.color = selectedPaintColor;
+          }
+          render();
+          return;
+        }
+
+        // Handle lock mode
+        if (lockMode) {
+          d.locked = !d.locked;
+          if (d.locked) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            boostedDots.delete(d.id);
+          }
+          render();
+          return;
+        }
+
+        // Handle orbit mode - click to set attractor
+        if (orbitMode && orbitSunId === null) {
+          setOrbitAttractor(d);
+          return;
+        }
+
+        // Don't allow dragging locked dots
+        if (d.locked) return;
+
+        holdDotId = d.id;
+        dragStartPos = { x: mx, y: my };
+        dragOriginalPos = { x: d.x, y: d.y };
+        dragDotId = d.id;
+        isDragging = false;
+
+        if (!dotVelocities.has(d.id)) {
+          dotVelocities.set(d.id, { vx: 0, vy: 0 });
+        }
+
+        holdTimer = setTimeout(() => {
+          if (holdDotId === d.id && !isDragging) {
+            shrinkDot(d.id);
+          }
+          clearHoldTimer();
+        }, HOLD_DURATION);
+      }
+
+      function handleDotTouchStart(d, tx, ty) {
+        // Handle paint mode
+        if (paintMode && selectedPaintColor) {
+          if (selectedPaintColor === "reset") {
+            delete d.color;
+          } else {
+            d.color = selectedPaintColor;
+          }
+          render();
+          return;
+        }
+
+        // Handle lock mode
+        if (lockMode) {
+          d.locked = !d.locked;
+          if (d.locked) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            boostedDots.delete(d.id);
+          }
+          render();
+          return;
+        }
+
+        // Handle orbit mode
+        if (orbitMode && orbitSunId === null) {
+          setOrbitAttractor(d);
+          return;
+        }
+
+        if (d.locked) return;
+
+        holdDotId = d.id;
+        dragStartPos = { x: tx, y: ty };
+        dragOriginalPos = { x: d.x, y: d.y };
+        dragDotId = d.id;
+        isDragging = false;
+
+        if (!dotVelocities.has(d.id)) {
+          dotVelocities.set(d.id, { vx: 0, vy: 0 });
+        }
+
+        holdTimer = setTimeout(() => {
+          if (holdDotId === d.id && !isDragging) {
+            shrinkDot(d.id);
+          }
+          clearHoldTimer();
+        }, HOLD_DURATION);
+      }
+
+      function handleDotDoubleClick(d) {
+        clearHoldTimer();
+
+        if (dotVelocities.has(d.id)) {
+          const vel = dotVelocities.get(d.id);
+          const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+          if (speed > MIN_VELOCITY) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            const snapped = snapToGrid(d.x, d.y);
+            if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
+              d.x = snapped.x;
+              d.y = snapped.y;
+            }
+            render();
+            return;
+          }
+        }
+
+        growDot(d.id);
+      }
 
       // ========== UTILITY FUNCTIONS ==========
       const snapToGrid = (x, y) => ({
@@ -2413,8 +2692,6 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
-        golfTargetGroup.selectAll("*").remove();
-
         render();
         updateGolfHUD();
       }
@@ -2532,8 +2809,6 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
-        pinballBumperGroup.selectAll("*").remove();
-
         render();
         updatePinballHUD();
       }
@@ -2606,7 +2881,6 @@
         clusterNextGroupId = 1;
         clusterTimeElapsed = 0;
         clusterSpawnInterval = 2000;
-        clusterDotsGroup.selectAll("*").remove();
 
         clusterRoundActive = true;
 
@@ -2683,7 +2957,6 @@
         clusterTimeElapsed = 0;
         clusterSpawnInterval = 2000;
 
-        clusterDotsGroup.selectAll("*").remove();
         updateClusterHUD();
       }
 
@@ -3013,48 +3286,7 @@
       }
 
       function renderClusterDots() {
-        // SVG circles for hit detection only (invisible)
-        const circles = clusterDotsGroup
-          .selectAll("circle")
-          .data(clusterDots, (d) => d.id);
-
-        circles.exit().remove();
-
-        circles
-          .enter()
-          .append("circle")
-          .attr("cursor", (d) => (d.isBlack ? "grab" : "default"))
-          .on("mousedown", function (event, d) {
-            if (d.isBlack) {
-              event.stopPropagation();
-              clusterDragDotId = d.id;
-              const [mx, my] = d3.pointer(event, svg.node());
-              clusterDragStartPos = { x: mx, y: my };
-              clusterDragOriginalPos = { x: d.x, y: d.y };
-              svg.classed("dragging", true);
-            }
-          })
-          .on("touchstart", function (event, d) {
-            if (d.isBlack) {
-              event.preventDefault();
-              event.stopPropagation();
-              clusterDragDotId = d.id;
-              const touch = event.touches[0];
-              const rect = svg.node().getBoundingClientRect();
-              clusterDragStartPos = {
-                x: touch.clientX - rect.left,
-                y: touch.clientY - rect.top,
-              };
-              clusterDragOriginalPos = { x: d.x, y: d.y };
-              svg.classed("dragging", true);
-            }
-          })
-          .merge(circles)
-          .attr("cx", (d) => d.x)
-          .attr("cy", (d) => d.y)
-          .attr("r", (d) => d.radius);
-
-        // Render visuals on canvas
+        // All rendering and hit detection is now handled by Canvas
         renderCanvas();
       }
 
@@ -3109,7 +3341,7 @@
         ctx.fillRect(0, 0, width, height);
 
         // Draw grid if visible
-        if (gridGroup.style("display") !== "none") {
+        if (showGrid) {
           ctx.strokeStyle = "rgba(0,0,0,0.2)";
           ctx.lineWidth = 0.5;
           for (let x = 0; x <= width; x += GRID_SIZE) {
@@ -3238,34 +3470,8 @@
         }
       }
 
-      // ========== SVG HIT DETECTION LAYER ==========
+      // ========== RENDER ==========
       function render() {
-        // Update invisible SVG circles for hit detection only
-        const circles = dotsGroup.selectAll("circle").data(dots, (d) => d.id);
-
-        circles.exit().remove();
-
-        circles
-          .enter()
-          .append("circle")
-          .attr("cx", (d) => d.x)
-          .attr("cy", (d) => d.y)
-          .attr("r", (d) => d.radius)
-          .on("mousedown", onDotMouseDown)
-          .on("mouseup", onDotMouseUp)
-          .on("mouseleave", onDotMouseLeave)
-          .on("dblclick", onDotDoubleClick)
-          .on("touchstart", onDotTouchStart)
-          .on("touchend", onDotTouchEnd)
-          .on("touchmove", onDotTouchMove);
-
-        // Update positions for hit detection
-        circles
-          .attr("cx", (d) => d.x)
-          .attr("cy", (d) => d.y)
-          .attr("r", (d) => d.radius);
-
-        // Render visuals on canvas
         renderCanvas();
       }
 
@@ -3450,331 +3656,7 @@
       }
 
       // ========== DOT EVENT HANDLERS ==========
-      function onDotMouseDown(event, d) {
-        event.stopPropagation();
-
-        // Handle paint mode
-        if (paintMode && selectedPaintColor) {
-          if (selectedPaintColor === "reset") {
-            delete d.color;
-          } else {
-            d.color = selectedPaintColor;
-          }
-          render();
-          return;
-        }
-
-        // Handle lock mode
-        if (lockMode) {
-          d.locked = !d.locked;
-          // Stop the dot if locking it
-          if (d.locked) {
-            dotVelocities.delete(d.id);
-            noFrictionDots.delete(d.id);
-            boostedDots.delete(d.id);
-          }
-          render();
-          return;
-        }
-
-        // Handle orbit mode - click to set attractor
-        if (orbitMode && orbitSunId === null) {
-          setOrbitAttractor(d);
-          return;
-        }
-
-        // Don't allow dragging locked dots (including the sun)
-        if (d.locked) return;
-
-        holdDotId = d.id;
-
-        const [mx, my] = d3.pointer(event, svg.node());
-        dragStartPos = { x: mx, y: my };
-        dragOriginalPos = { x: d.x, y: d.y };
-        dragDotId = d.id;
-        isDragging = false;
-
-        // Initialize velocity for this dot if not already moving
-        if (!dotVelocities.has(d.id)) {
-          dotVelocities.set(d.id, { vx: 0, vy: 0 });
-        }
-
-        holdTimer = setTimeout(() => {
-          if (holdDotId === d.id && !isDragging) {
-            shrinkDot(d.id);
-          }
-          clearHoldTimer();
-        }, HOLD_DURATION);
-      }
-
-      function onDotMouseUp(event, d) {
-        event.stopPropagation();
-        finalizeDrag();
-        clearHoldTimer();
-      }
-
-      function onDotMouseLeave(event, d) {
-        if (!isDragging) {
-          clearHoldTimer();
-        }
-      }
-
-      function onDotDoubleClick(event, d) {
-        event.stopPropagation();
-        event.preventDefault();
-        clearHoldTimer();
-
-        // If dot is moving, stop it
-        if (dotVelocities.has(d.id)) {
-          const vel = dotVelocities.get(d.id);
-          const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
-          if (speed > MIN_VELOCITY) {
-            dotVelocities.delete(d.id);
-            noFrictionDots.delete(d.id);
-            const snapped = snapToGrid(d.x, d.y);
-            if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
-              d.x = snapped.x;
-              d.y = snapped.y;
-            }
-            render();
-            return;
-          }
-        }
-
-        growDot(d.id);
-      }
-
-      // ========== TOUCH EVENT HANDLERS FOR DOTS ==========
-      function onDotTouchStart(event, d) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        // Handle paint mode
-        if (paintMode && selectedPaintColor) {
-          if (selectedPaintColor === "reset") {
-            delete d.color;
-          } else {
-            d.color = selectedPaintColor;
-          }
-          render();
-          return;
-        }
-
-        // Handle lock mode
-        if (lockMode) {
-          d.locked = !d.locked;
-          if (d.locked) {
-            dotVelocities.delete(d.id);
-            noFrictionDots.delete(d.id);
-            boostedDots.delete(d.id);
-          }
-          render();
-          return;
-        }
-
-        // Handle orbit mode - click to set attractor
-        if (orbitMode && orbitSunId === null) {
-          setOrbitAttractor(d);
-          return;
-        }
-
-        // Don't allow dragging locked dots (including the sun)
-        if (d.locked) return;
-
-        const touch = event.touches[0];
-        const [tx, ty] = [touch.clientX, touch.clientY];
-
-        // Check for double-tap
-        const now = Date.now();
-        if (
-          lastTapTime &&
-          now - lastTapTime < DOUBLE_TAP_THRESHOLD &&
-          lastTapPos
-        ) {
-          const dist = Math.sqrt(
-            (tx - lastTapPos.x) ** 2 + (ty - lastTapPos.y) ** 2,
-          );
-          if (dist < DOUBLE_TAP_DISTANCE) {
-            // Double-tap detected
-            lastTapTime = 0;
-            lastTapPos = null;
-            onDotDoubleClick(event, d);
-            return;
-          }
-        }
-        lastTapTime = now;
-        lastTapPos = { x: tx, y: ty };
-
-        // Start drag
-        holdDotId = d.id;
-        const rect = svg.node().getBoundingClientRect();
-        dragStartPos = { x: tx - rect.left, y: ty - rect.top };
-        dragOriginalPos = { x: d.x, y: d.y };
-        dragDotId = d.id;
-        isDragging = false;
-
-        if (!dotVelocities.has(d.id)) {
-          dotVelocities.set(d.id, { vx: 0, vy: 0 });
-        }
-
-        holdTimer = setTimeout(() => {
-          if (holdDotId === d.id && !isDragging) {
-            shrinkDot(d.id);
-          }
-          clearHoldTimer();
-        }, HOLD_DURATION);
-      }
-
-      function onDotTouchMove(event, d) {
-        if (dragDotId === null) return;
-        event.preventDefault();
-
-        const touch = event.touches[0];
-        const rect = svg.node().getBoundingClientRect();
-        const tx = touch.clientX - rect.left;
-        const ty = touch.clientY - rect.top;
-
-        const dx = tx - dragStartPos.x;
-        const dy = ty - dragStartPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (!isDragging && distance > DRAG_THRESHOLD) {
-          isDragging = true;
-          clearHoldTimer();
-          svg.classed("dragging", true);
-          startPhysicsLoop();
-        }
-
-        if (isDragging) {
-          dragTargetPos = {
-            x: dragOriginalPos.x + dx,
-            y: dragOriginalPos.y + dy,
-          };
-        }
-      }
-
-      function onDotTouchEnd(event, d) {
-        event.preventDefault();
-        finalizeDrag();
-        clearHoldTimer();
-      }
-
-      // ========== DRAG HANDLING ==========
-      svg.on("mousemove", function (event) {
-        // Handle cluster black dot dragging
-        if (clusterDragDotId !== null) {
-          const [mx, my] = d3.pointer(event, svg.node());
-          const dx = mx - clusterDragStartPos.x;
-          const dy = my - clusterDragStartPos.y;
-          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
-          if (dot) {
-            const newX = clusterDragOriginalPos.x + dx;
-            const newY = clusterDragOriginalPos.y + dy;
-
-            // Track velocity based on position change
-            if (clusterDragLastPos) {
-              clusterDragVelocity.vx =
-                (newX - clusterDragLastPos.x) * 0.5 +
-                clusterDragVelocity.vx * 0.5;
-              clusterDragVelocity.vy =
-                (newY - clusterDragLastPos.y) * 0.5 +
-                clusterDragVelocity.vy * 0.5;
-            }
-            clusterDragLastPos = { x: newX, y: newY };
-
-            dot.x = newX;
-            dot.y = newY;
-            // Keep in bounds
-            dot.x = Math.max(
-              dot.radius,
-              Math.min(window.innerWidth - dot.radius, dot.x),
-            );
-            dot.y = Math.max(
-              dot.radius,
-              Math.min(window.innerHeight - dot.radius, dot.y),
-            );
-          }
-          return;
-        }
-
-        if (dragDotId === null) return;
-
-        const [mx, my] = d3.pointer(event, svg.node());
-        const dx = mx - dragStartPos.x;
-        const dy = my - dragStartPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (!isDragging && distance > DRAG_THRESHOLD) {
-          isDragging = true;
-          clearHoldTimer();
-          svg.classed("dragging", true);
-          startPhysicsLoop();
-        }
-
-        if (isDragging) {
-          dragTargetPos = {
-            x: dragOriginalPos.x + dx,
-            y: dragOriginalPos.y + dy,
-          };
-        }
-      });
-
-      svg.on("mouseup", function (event) {
-        // Handle cluster black dot release
-        if (clusterDragDotId !== null) {
-          finalizeClusterDrag();
-          return;
-        }
-        finalizeDrag();
-      });
-
-      // Touch handlers for cluster dragging
-      svg.on("touchmove", function (event) {
-        if (clusterDragDotId !== null) {
-          event.preventDefault();
-          const touch = event.touches[0];
-          const rect = svg.node().getBoundingClientRect();
-          const tx = touch.clientX - rect.left;
-          const ty = touch.clientY - rect.top;
-          const dx = tx - clusterDragStartPos.x;
-          const dy = ty - clusterDragStartPos.y;
-          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
-          if (dot) {
-            const newX = clusterDragOriginalPos.x + dx;
-            const newY = clusterDragOriginalPos.y + dy;
-
-            // Track velocity
-            if (clusterDragLastPos) {
-              clusterDragVelocity.vx =
-                (newX - clusterDragLastPos.x) * 0.5 +
-                clusterDragVelocity.vx * 0.5;
-              clusterDragVelocity.vy =
-                (newY - clusterDragLastPos.y) * 0.5 +
-                clusterDragVelocity.vy * 0.5;
-            }
-            clusterDragLastPos = { x: newX, y: newY };
-
-            dot.x = newX;
-            dot.y = newY;
-            dot.x = Math.max(
-              dot.radius,
-              Math.min(window.innerWidth - dot.radius, dot.x),
-            );
-            dot.y = Math.max(
-              dot.radius,
-              Math.min(window.innerHeight - dot.radius, dot.y),
-            );
-          }
-        }
-      });
-
-      svg.on("touchend", function (event) {
-        if (clusterDragDotId !== null) {
-          event.preventDefault();
-          finalizeClusterDrag();
-        }
-      });
-
+      // ========== DRAG FINALIZATION ==========
       function finalizeDrag() {
         if (isDragging && dragDotId !== null) {
           // On release, just let physics continue - don't switch modes
@@ -3860,7 +3742,7 @@
         dragOriginalPos = null;
         dragTargetPos = null;
         velocityHistory = [];
-        svg.classed("dragging", false);
+        gameCanvas.classList.remove("dragging");
       }
 
       function finalizeClusterDrag() {
@@ -3900,7 +3782,7 @@
         clusterDragOriginalPos = null;
         clusterDragLastPos = null;
         clusterDragVelocity = { vx: 0, vy: 0 };
-        svg.classed("dragging", false);
+        gameCanvas.classList.remove("dragging");
       }
 
       // ========== UNIFIED PHYSICS LOOP ==========
@@ -4234,41 +4116,6 @@
       }
 
       // ========== BACKGROUND HANDLERS ==========
-      background.on("dblclick", function (event) {
-        const [x, y] = d3.pointer(event);
-        createDot(x, y);
-      });
-
-      // Touch support for background (double-tap to create)
-      background.on("touchstart", function (event) {
-        event.preventDefault();
-        const touch = event.touches[0];
-        const rect = svg.node().getBoundingClientRect();
-        const tx = touch.clientX - rect.left;
-        const ty = touch.clientY - rect.top;
-
-        const now = Date.now();
-        if (
-          lastTapTime &&
-          now - lastTapTime < DOUBLE_TAP_THRESHOLD &&
-          lastTapPos
-        ) {
-          const dist = Math.sqrt(
-            (touch.clientX - lastTapPos.x) ** 2 +
-              (touch.clientY - lastTapPos.y) ** 2,
-          );
-          if (dist < DOUBLE_TAP_DISTANCE) {
-            // Double-tap detected - create dot
-            lastTapTime = 0;
-            lastTapPos = null;
-            createDot(tx, ty);
-            return;
-          }
-        }
-        lastTapTime = now;
-        lastTapPos = { x: touch.clientX, y: touch.clientY };
-      });
-
       // ========== UI CONTROLS ==========
 
       // Controls panel toggle
@@ -4698,7 +4545,8 @@
       // Grid toggle
       const gridToggle = document.getElementById("gridToggle");
       gridToggle.addEventListener("change", () => {
-        gridGroup.style("display", gridToggle.checked ? "block" : "none");
+        showGrid = gridToggle.checked;
+        renderCanvas();
       });
 
       // Theme selector
@@ -4838,10 +4686,7 @@
             }
             if (state.settings.showGrid !== undefined) {
               gridToggle.checked = state.settings.showGrid;
-              gridGroup.style(
-                "display",
-                state.settings.showGrid ? "block" : "none",
-              );
+              showGrid = state.settings.showGrid;
             }
           }
 
