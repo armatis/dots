@@ -4712,6 +4712,7 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
+        orbitingDots.clear();
         render();
       });
 
@@ -4871,7 +4872,7 @@
           }
         }
         if (e.key === "s" || e.key === "S") {
-          // Stop all dots
+          // Stop all dots (including orbiting ones)
           for (const [dotId, vel] of dotVelocities) {
             const dot = dots.find((d) => d.id === dotId);
             if (dot) {
@@ -4885,6 +4886,7 @@
           dotVelocities.clear();
           noFrictionDots.clear();
           boostedDots.clear();
+          orbitingDots.clear();
           render();
         }
         if (e.key === "?") {
