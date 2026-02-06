@@ -1845,7 +1845,7 @@
 
       // Gravity state
       let gravityEnabled = false;
-      const GRAVITY_CONSTANT = 0.15; // Base gravitational constant
+      const GRAVITY_BASE = 0.02; // Base gravitational acceleration
 
       // Color themes
       const themes = {
@@ -3861,22 +3861,27 @@
 
               const dx = dotB.x - dotA.x;
               const dy = dotB.y - dotA.y;
-              const distSq = dx * dx + dy * dy;
-              const dist = Math.sqrt(distSq);
+              const dist = Math.sqrt(dx * dx + dy * dy);
 
-              // Minimum distance to prevent extreme forces
+              // Skip if overlapping (collision handles this)
               const minDist = dotA.radius + dotB.radius;
-              if (dist < minDist) continue;
+              if (dist < minDist * 1.1) continue;
 
-              // Gravitational force: F = G * m1 * m2 / r^2
-              // But we simplify: smaller dots feel pull toward larger
-              const forceMag = (gravityStrength * GRAVITY_CONSTANT * mB) / distSq;
+              // Game-friendly gravity: stronger at close range, with max distance
+              const maxRange = 300; // Max range of gravitational effect
+              if (dist > maxRange) continue;
+
+              // Force increases as you get closer (inverse linear, capped)
+              // Also scales with mass ratio (bigger = stronger pull)
+              const massRatio = mB / mA;
+              const distanceFactor = 1 - (dist / maxRange); // 1 at center, 0 at edge
+              const forceMag = GRAVITY_BASE * gravityStrength * massRatio * distanceFactor;
 
               // Direction toward larger dot
               const nx = dx / dist;
               const ny = dy / dist;
 
-              // Apply force to velocity (F = ma, so a = F/m)
+              // Apply force to velocity
               let vel = dotVelocities.get(dotA.id);
               if (!vel) {
                 vel = { vx: 0, vy: 0 };
