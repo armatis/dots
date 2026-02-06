@@ -4,6 +4,8 @@
 
 - **No Claude attribution in commits**: Do not add "Co-Authored-By: Claude" or any similar AI attribution to git commits.
 
+- **Clarify before acting on vague or unexpected prompts**: If a prompt is ambiguous, seems unrelated to the current work, or could be interpreted multiple ways, ask for clarification before making changes. When asking, provide a suggestion or interpretation so the user can quickly confirm or redirect. Example: "I'm not sure what you mean by X. Did you want me to [suggestion A] or [suggestion B]?"
+
 ## Project Overview
 
 Dots is an experimental canvas-based game engine focused on circle physics, collisions, and interactive pattern generation. What started as a simple experiment to create growing and shrinking dots has evolved into a creative sandbox with multiple game mechanics centered around dot interactions.
