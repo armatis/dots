@@ -443,47 +443,70 @@
         50% { box-shadow: 0 0 16px var(--accent), 0 0 24px var(--accent-glow); }
       }
 
-      /* Paint Mode Indicator */
+      /* Paint Mode Indicator - clickable exit button */
       #paintIndicator {
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.9);
-        padding: 16px 32px;
+        bottom: 24px;
+        right: 24px;
+        transform: translateY(20px);
+        padding: 12px 18px;
         background: var(--panel-bg);
         color: var(--accent);
         border: 1px solid var(--accent-dim);
-        border-radius: 16px;
+        border-radius: 12px;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 16px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 3px;
-        pointer-events: none;
+        letter-spacing: 1.5px;
+        pointer-events: auto;
+        cursor: pointer;
         opacity: 0;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 150;
         box-shadow:
-          0 0 60px var(--panel-glow),
-          0 8px 32px rgba(0, 0, 0, 0.5),
-          inset 0 0 30px var(--panel-glow);
+          0 0 40px var(--panel-glow),
+          0 4px 20px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        text-shadow: 0 0 20px var(--accent-glow);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #paintIndicator:hover {
+        background: rgba(12, 28, 44, 0.95);
+        border-color: var(--accent);
+        box-shadow:
+          0 0 50px var(--panel-glow),
+          0 4px 24px rgba(0, 0, 0, 0.5);
+      }
+
+      #paintIndicator:active {
+        transform: translateY(2px);
       }
 
       #paintIndicator.active {
         opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+        transform: translateY(0);
+      }
+
+      #paintIndicator.active:active {
+        transform: translateY(2px);
       }
 
       #paintIndicator .color-preview {
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
         border-radius: 4px;
         border: 2px solid rgba(255, 255, 255, 0.3);
+      }
+
+      #paintIndicator .exit-x {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-left: 6px;
       }
 
       /* Action Buttons */
@@ -1450,7 +1473,7 @@
     </div>
 
     <div id="freezeIndicator">❄ FROZEN</div>
-    <div id="paintIndicator">PAINT MODE <span class="color-preview" id="paintColorPreview"></span></div>
+    <div id="paintIndicator"><span class="color-preview" id="paintColorPreview"></span> PAINT <span class="exit-x">✕</span></div>
 
     <button id="helpBtn">?</button>
 
@@ -3987,6 +4010,15 @@
               : selectedPaintColor;
           }
         });
+      });
+
+      // Click paint indicator to exit paint mode
+      paintIndicator.addEventListener("click", () => {
+        if (paintMode) {
+          paintMode = false;
+          paintModeToggle.classList.remove("active");
+          paintIndicator.classList.remove("active");
+        }
       });
 
       // Chain Reaction controls
