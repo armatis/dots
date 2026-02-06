@@ -1723,6 +1723,20 @@
             <label for="orbitToggle">Orbit <span class="kbd-hint">(O)</span></label>
             <input type="checkbox" id="orbitToggle" />
           </div>
+          <div class="control-row" id="orbitStrengthRow" style="display: none;">
+            <label for="orbitStrength">Pull</label>
+            <input
+              type="range"
+              id="orbitStrength"
+              min="1"
+              max="100"
+              value="50"
+            />
+            <span class="value" id="orbitStrengthValue">50</span>
+          </div>
+          <div class="orbit-hint" id="orbitHint" style="display: none; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+            Click a dot to make it the attractor
+          </div>
         </div>
 
         <div class="control-section">
@@ -3397,7 +3411,13 @@
           return;
         }
 
-        // Don't allow dragging locked dots
+        // Handle orbit mode - click to set attractor
+        if (orbitMode && orbitSunId === null) {
+          setOrbitAttractor(d);
+          return;
+        }
+
+        // Don't allow dragging locked dots (including the sun)
         if (d.locked) return;
 
         holdDotId = d.id;
@@ -3486,7 +3506,13 @@
           return;
         }
 
-        // Don't allow dragging locked dots
+        // Handle orbit mode - click to set attractor
+        if (orbitMode && orbitSunId === null) {
+          setOrbitAttractor(d);
+          return;
+        }
+
+        // Don't allow dragging locked dots (including the sun)
         if (d.locked) return;
 
         const touch = event.touches[0];
@@ -3847,6 +3873,8 @@
         if (orbitMode && orbitSunId !== null && !isFrozen) {
           const sun = dots.find(d => d.id === orbitSunId);
           if (sun) {
+            const strength = getOrbitStrength();
+
             for (const dot of dots) {
               // Skip the sun itself and locked dots
               if (dot.id === orbitSunId || dot.locked) continue;
@@ -3862,7 +3890,7 @@
               const minDist = sun.radius + dot.radius;
               if (dist < minDist) continue;
 
-              const maxRange = 400; // Max orbital range
+              const maxRange = 500; // Max orbital range
               if (dist > maxRange) {
                 // Remove from orbiters if too far
                 orbitingDots.delete(dot.id);
@@ -3872,8 +3900,8 @@
               // Add to orbiters
               orbitingDots.add(dot.id);
 
-              // Gravitational pull (stronger when closer)
-              const forceMag = ORBIT_GRAVITY * (sun.radius / 40) * (1 + 100 / dist);
+              // Gravitational pull - scales with sun size and user-set strength
+              const forceMag = ORBIT_GRAVITY * strength * (sun.radius / 20) * (1 + 50 / dist);
 
               // Direction toward sun
               const nx = dx / dist;
@@ -4235,49 +4263,79 @@
       // Orbit mode toggle
       const orbitToggle = document.getElementById("orbitToggle");
 
+      const orbitStrengthRow = document.getElementById("orbitStrengthRow");
+      const orbitStrengthSlider = document.getElementById("orbitStrength");
+      const orbitStrengthValue = document.getElementById("orbitStrengthValue");
+      const orbitHint = document.getElementById("orbitHint");
+
+      orbitStrengthSlider.addEventListener("input", () => {
+        orbitStrengthValue.textContent = orbitStrengthSlider.value;
+      });
+
+      function getOrbitStrength() {
+        return parseFloat(orbitStrengthSlider.value) / 50; // 50 = 1x, 100 = 2x
+      }
+
       function enableOrbitMode() {
         orbitMode = true;
         orbitToggle.checked = true;
+        orbitStrengthRow.style.display = "flex";
+        orbitHint.style.display = orbitSunId === null ? "block" : "none";
 
-        // Create sun in center if it doesn't exist
-        if (orbitSunId === null) {
-          const sunX = window.innerWidth / 2;
-          const sunY = window.innerHeight / 2;
-
-          // Remove any dot near center to make room
-          dots = dots.filter(d => {
-            const dx = d.x - sunX;
-            const dy = d.y - sunY;
-            return Math.sqrt(dx*dx + dy*dy) > ORBIT_SUN_RADIUS + d.radius;
-          });
-
-          // Create the sun
-          const sun = {
-            id: nextId++,
-            x: sunX,
-            y: sunY,
-            radius: ORBIT_SUN_RADIUS,
-            locked: true,
-            color: "#FFD700", // Gold color for sun
-            isSun: true
-          };
-          dots.push(sun);
-          orbitSunId = sun.id;
-          render();
+        // Exit other modes
+        if (paintMode) {
+          paintMode = false;
+          paintModeToggle.classList.remove("active");
+          paintIndicator.classList.remove("active");
+        }
+        if (lockMode) {
+          lockMode = false;
+          lockModeToggle.classList.remove("active");
+          lockIndicator.classList.remove("active");
         }
       }
 
       function disableOrbitMode() {
         orbitMode = false;
         orbitToggle.checked = false;
+        orbitStrengthRow.style.display = "none";
+        orbitHint.style.display = "none";
 
-        // Remove the sun
+        // Unmark the sun but keep it as a normal dot
         if (orbitSunId !== null) {
-          dots = dots.filter(d => d.id !== orbitSunId);
+          const sun = dots.find(d => d.id === orbitSunId);
+          if (sun) {
+            sun.isSun = false;
+            // Keep it locked if it was already locked, otherwise unlock
+          }
           orbitSunId = null;
           orbitingDots.clear();
           render();
         }
+      }
+
+      function setOrbitAttractor(dot) {
+        // Unmark previous sun
+        if (orbitSunId !== null) {
+          const oldSun = dots.find(d => d.id === orbitSunId);
+          if (oldSun) {
+            oldSun.isSun = false;
+          }
+        }
+
+        // Mark new sun
+        dot.isSun = true;
+        dot.locked = true; // Lock it so it doesn't move
+        orbitSunId = dot.id;
+        orbitingDots.clear();
+        orbitHint.style.display = "none";
+
+        // Stop any velocity
+        dotVelocities.delete(dot.id);
+        noFrictionDots.delete(dot.id);
+        boostedDots.delete(dot.id);
+
+        render();
       }
 
       orbitToggle.addEventListener("change", () => {
