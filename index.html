@@ -1620,6 +1620,9 @@
           <dt><kbd>G</kbd></dt>
           <dd>Toggle gravity</dd>
 
+          <dt><kbd>↑</kbd> / <kbd>↓</kbd></dt>
+          <dd>Adjust gravity strength</dd>
+
           <dt><kbd>S</kbd></dt>
           <dd>Stop all dots</dd>
 
@@ -1712,11 +1715,11 @@
             <span class="value" id="bounceValue">85</span>
           </div>
           <div class="control-row">
-            <label for="gravityToggle">Gravity</label>
+            <label for="gravityToggle">Gravity <span class="kbd-hint">(G)</span></label>
             <input type="checkbox" id="gravityToggle" />
           </div>
-          <div class="control-row" id="gravityStrengthRow" style="display: none;">
-            <label for="gravityStrength">Strength</label>
+          <div class="control-row" id="gravityStrengthRow">
+            <label for="gravityStrength">Pull <span class="kbd-hint">(↑↓)</span></label>
             <input
               type="range"
               id="gravityStrength"
@@ -4225,12 +4228,17 @@
 
       gravityToggle.addEventListener("change", () => {
         gravityEnabled = gravityToggle.checked;
-        gravityStrengthRow.style.display = gravityEnabled ? "flex" : "none";
       });
 
       gravityStrengthSlider.addEventListener("input", () => {
         gravityStrengthValue.textContent = gravityStrengthSlider.value;
       });
+
+      function adjustGravityStrength(delta) {
+        const newVal = Math.max(1, Math.min(100, parseInt(gravityStrengthSlider.value) + delta));
+        gravityStrengthSlider.value = newVal;
+        gravityStrengthValue.textContent = newVal;
+      }
 
       // Freeze toggle
       const freezeToggle = document.getElementById("freezeToggle");
@@ -4726,7 +4734,14 @@
         if (e.key === "g" || e.key === "G") {
           gravityEnabled = !gravityEnabled;
           gravityToggle.checked = gravityEnabled;
-          gravityStrengthRow.style.display = gravityEnabled ? "flex" : "none";
+        }
+        if (e.key === "ArrowUp") {
+          adjustGravityStrength(10);
+          e.preventDefault();
+        }
+        if (e.key === "ArrowDown") {
+          adjustGravityStrength(-10);
+          e.preventDefault();
         }
         if (e.key === "s" || e.key === "S") {
           // Stop all dots
