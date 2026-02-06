@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dots</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;600&family=Oswald:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
       * {
         margin: 0;
@@ -42,63 +45,130 @@
         cursor: grabbing;
       }
 
+      /* ========== CONTROLS PANEL - Observatory Theme ========== */
+      :root {
+        --panel-bg: rgba(8, 20, 32, 0.92);
+        --panel-border: rgba(130, 204, 221, 0.15);
+        --panel-glow: rgba(130, 204, 221, 0.08);
+        --accent: #82ccdd;
+        --accent-dim: rgba(130, 204, 221, 0.6);
+        --accent-glow: rgba(130, 204, 221, 0.4);
+        --text-primary: rgba(255, 255, 255, 0.95);
+        --text-secondary: rgba(255, 255, 255, 0.5);
+        --text-label: rgba(130, 204, 221, 0.7);
+        --divider: rgba(130, 204, 221, 0.1);
+        --danger: #ff6b6b;
+        --danger-glow: rgba(255, 107, 107, 0.3);
+      }
+
       #controls {
         position: fixed;
         top: 20px;
         right: 20px;
         z-index: 100;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        font-size: 14px;
+        font-family: 'Outfit', system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 400;
       }
 
       #controlsToggle {
-        width: 40px;
-        height: 40px;
-        background: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
+        width: 44px;
+        height: 44px;
+        background: var(--panel-bg);
+        color: var(--accent);
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
         font-size: 20px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         margin-left: auto;
-        transition: background 0.2s;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow:
+          0 4px 24px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 0 0 1px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
 
       #controlsToggle:hover {
-        background: #000;
+        background: rgba(12, 28, 44, 0.95);
+        border-color: var(--accent-dim);
+        box-shadow:
+          0 4px 24px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08),
+          0 0 20px var(--panel-glow),
+          0 0 0 1px rgba(0, 0, 0, 0.3);
+        transform: scale(1.05);
+      }
+
+      #controlsToggle:active {
+        transform: scale(0.98);
       }
 
       #controlsPanel {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 8px;
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
         padding: 0;
-        margin-top: 10px;
+        margin-top: 12px;
         max-height: 0;
         overflow: hidden;
         transition:
-          max-height 0.3s ease,
-          padding 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        width: 260px;
+          max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+          padding 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+          opacity 0.3s ease;
+        box-shadow:
+          0 8px 40px rgba(0, 0, 0, 0.5),
+          0 0 80px var(--panel-glow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 0 0 1px rgba(0, 0, 0, 0.4);
+        width: 280px;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        opacity: 0;
       }
 
       #controlsPanel.open {
         max-height: calc(100vh - 100px);
         overflow-y: auto;
-        padding: 15px;
+        padding: 20px;
+        opacity: 1;
+      }
+
+      /* Hide scrollbar but keep scroll functionality */
+      #controlsPanel {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+      }
+      #controlsPanel::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
       }
 
       .control-section {
-        margin-bottom: 15px;
-        padding-bottom: 15px;
-        border-bottom: 1px solid #ddd;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--divider);
+        opacity: 0;
+        transform: translateY(8px);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
       }
+
+      #controlsPanel.open .control-section {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Staggered animation delays */
+      #controlsPanel.open .control-section:nth-child(1) { transition-delay: 0.05s; }
+      #controlsPanel.open .control-section:nth-child(2) { transition-delay: 0.1s; }
+      #controlsPanel.open .control-section:nth-child(3) { transition-delay: 0.15s; }
+      #controlsPanel.open .control-section:nth-child(4) { transition-delay: 0.2s; }
+      #controlsPanel.open .control-section:nth-child(5) { transition-delay: 0.25s; }
+      #controlsPanel.open .control-section:nth-child(6) { transition-delay: 0.3s; }
+      #controlsPanel.open .control-section:nth-child(7) { transition-delay: 0.35s; }
 
       .control-section:last-child {
         margin-bottom: 0;
@@ -107,18 +177,33 @@
       }
 
       .control-section h3 {
-        margin: 0 0 10px 0;
-        font-size: 11px;
+        margin: 0 0 14px 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #666;
+        letter-spacing: 2px;
+        color: var(--text-label);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .control-section h3::before {
+        content: '';
+        width: 3px;
+        height: 3px;
+        background: var(--accent);
+        border-radius: 50%;
+        box-shadow: 0 0 6px var(--accent);
       }
 
       .control-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
+        gap: 12px;
       }
 
       .control-row:last-child {
@@ -126,69 +211,157 @@
       }
 
       .control-row label {
-        color: #333;
+        color: var(--text-primary);
         font-size: 13px;
+        font-weight: 400;
+        letter-spacing: 0.2px;
       }
 
+      /* Custom Range Slider */
       .control-row input[type="range"] {
-        width: 100px;
+        -webkit-appearance: none;
+        appearance: none;
+        width: 90px;
+        height: 4px;
+        background: var(--divider);
+        border-radius: 2px;
         cursor: pointer;
+        outline: none;
+      }
+
+      .control-row input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        background: var(--accent);
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 0 10px var(--accent-glow), 0 2px 4px rgba(0,0,0,0.3);
+        transition: all 0.2s ease;
+      }
+
+      .control-row input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
+        box-shadow: 0 0 16px var(--accent-glow), 0 2px 6px rgba(0,0,0,0.4);
+      }
+
+      .control-row input[type="range"]::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        background: var(--accent);
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 0 10px var(--accent-glow), 0 2px 4px rgba(0,0,0,0.3);
       }
 
       .control-row .value {
-        min-width: 30px;
+        min-width: 32px;
         text-align: right;
-        font-weight: bold;
-        color: #000;
-        font-size: 13px;
-      }
-
-      .control-row input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-      }
-
-      .toggle-btn {
-        padding: 6px 12px;
-        background: transparent;
-        color: #000;
-        border: 1px solid #000;
-        border-radius: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
         font-size: 12px;
+        color: var(--accent);
+        text-shadow: 0 0 8px var(--accent-glow);
+      }
+
+      /* Custom Toggle Switch */
+      .control-row input[type="checkbox"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 40px;
+        height: 22px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 11px;
         cursor: pointer;
-        transition:
-          background 0.2s,
-          color 0.2s;
+        position: relative;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .control-row input[type="checkbox"]::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: var(--text-secondary);
+        border-radius: 50%;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .control-row input[type="checkbox"]:checked {
+        background: rgba(130, 204, 221, 0.2);
+        border-color: var(--accent-dim);
+      }
+
+      .control-row input[type="checkbox"]:checked::after {
+        transform: translateX(18px);
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent-glow);
+      }
+
+      .control-row input[type="checkbox"]:hover {
+        border-color: var(--accent-dim);
+      }
+
+      /* Modifier Toggle Buttons */
+      .toggle-btn {
+        padding: 8px 14px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-secondary);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       .toggle-btn:hover {
-        background: rgba(0, 0, 0, 0.1);
+        background: rgba(130, 204, 221, 0.1);
+        border-color: var(--accent-dim);
+        color: var(--text-primary);
       }
 
       .toggle-btn.active {
-        background: #000;
-        color: #fff;
+        background: rgba(130, 204, 221, 0.2);
+        border-color: var(--accent);
+        color: var(--accent);
+        box-shadow: 0 0 16px var(--panel-glow), inset 0 0 12px var(--panel-glow);
       }
 
       .modifier-toggles {
         display: flex;
-        gap: 8px;
+        gap: 10px;
       }
 
+      .kbd-hint {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+        color: var(--text-secondary);
+        margin-left: 4px;
+        opacity: 0.7;
+      }
+
+      /* Action Buttons */
       .action-btn {
         width: 100%;
-        padding: 10px;
-        background: transparent;
-        color: #000;
-        border: 1px solid #000;
-        border-radius: 4px;
+        padding: 11px 16px;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text-primary);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        font-family: 'Outfit', sans-serif;
         font-size: 13px;
+        font-weight: 500;
         cursor: pointer;
-        transition:
-          background 0.2s,
-          color 0.2s;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         margin-top: 8px;
+        letter-spacing: 0.3px;
       }
 
       .action-btn:first-child {
@@ -196,136 +369,190 @@
       }
 
       .action-btn:hover {
-        background: #000;
-        color: #82ccdd;
+        background: rgba(130, 204, 221, 0.15);
+        border-color: var(--accent-dim);
+        color: var(--accent);
+        box-shadow: 0 0 20px var(--panel-glow);
+        transform: translateY(-1px);
+      }
+
+      .action-btn:active {
+        transform: translateY(0);
       }
 
       .action-btn.danger {
-        border-color: #c00;
-        color: #c00;
+        border-color: rgba(255, 107, 107, 0.3);
+        color: var(--danger);
         margin-top: 16px;
       }
 
       .action-btn.danger:hover {
-        background: #c00;
-        color: #fff;
+        background: rgba(255, 107, 107, 0.15);
+        border-color: var(--danger);
+        box-shadow: 0 0 20px var(--danger-glow);
       }
 
-      .kbd-hint {
-        font-size: 10px;
-        color: #999;
-        margin-left: 4px;
-      }
-
+      /* Select Dropdown */
       .control-row select {
-        padding: 4px 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 13px;
+        padding: 6px 28px 6px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 12px;
+        font-weight: 500;
         cursor: pointer;
-        background: #fff;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+        outline: none;
+        transition: all 0.2s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(130,204,221,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
       }
 
+      .control-row select:hover {
+        border-color: var(--accent-dim);
+        background-color: rgba(130, 204, 221, 0.08);
+      }
+
+      .control-row select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 12px var(--panel-glow);
+      }
+
+      .control-row select option {
+        background: #0c1c2c;
+        color: var(--text-primary);
+        padding: 8px;
+      }
+
+      /* ========== Freeze Indicator ========== */
       #freezeIndicator {
         position: fixed;
         top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%) scale(0.9);
         padding: 20px 40px;
-        background: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        border-radius: 8px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        font-size: 24px;
-        font-weight: bold;
-        letter-spacing: 2px;
+        background: var(--panel-bg);
+        color: var(--accent);
+        border: 1px solid var(--accent-dim);
+        border-radius: 16px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 4px;
         pointer-events: none;
         opacity: 0;
-        transition: opacity 0.2s;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 150;
+        box-shadow:
+          0 0 60px var(--panel-glow),
+          0 8px 32px rgba(0, 0, 0, 0.5),
+          inset 0 0 30px var(--panel-glow);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        text-shadow: 0 0 20px var(--accent-glow);
       }
 
       #freezeIndicator.active {
         opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
       }
 
+      /* ========== Modifier Indicators ========== */
       #modifiers {
         position: fixed;
-        bottom: 20px;
-        left: 20px;
+        bottom: 24px;
+        left: 24px;
         display: flex;
-        gap: 10px;
+        gap: 12px;
         z-index: 100;
       }
 
       .modifier {
-        padding: 8px 16px;
-        background: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        border-radius: 4px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        font-size: 14px;
-        font-weight: bold;
+        padding: 10px 18px;
+        background: var(--panel-bg);
+        color: var(--accent);
+        border: 1px solid var(--panel-border);
+        border-radius: 10px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2px;
         opacity: 0;
-        transform: translateY(10px);
-        transition:
-          opacity 0.15s,
-          transform 0.15s;
+        transform: translateY(12px) scale(0.95);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         pointer-events: none;
+        box-shadow:
+          0 4px 20px rgba(0, 0, 0, 0.4),
+          0 0 30px var(--panel-glow);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        text-shadow: 0 0 10px var(--accent-glow);
       }
 
       .modifier.active {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
+        border-color: var(--accent-dim);
+        box-shadow:
+          0 4px 20px rgba(0, 0, 0, 0.4),
+          0 0 40px var(--panel-glow),
+          inset 0 0 15px var(--panel-glow);
       }
 
+      /* ========== Help Button ========== */
       #helpBtn {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 36px;
-        height: 36px;
-        background: transparent;
-        color: #000;
-        border: 1px solid #000;
+        bottom: 24px;
+        right: 24px;
+        width: 40px;
+        height: 40px;
+        background: var(--panel-bg);
+        color: var(--accent);
+        border: 1px solid var(--panel-border);
         border-radius: 50%;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        font-size: 18px;
-        font-weight: bold;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+        font-weight: 600;
         cursor: pointer;
-        transition:
-          background 0.2s,
-          color 0.2s;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 100;
+        box-shadow:
+          0 4px 20px rgba(0, 0, 0, 0.4),
+          0 0 20px var(--panel-glow);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
 
       #helpBtn:hover {
-        background: #000;
-        color: #82ccdd;
+        border-color: var(--accent-dim);
+        transform: scale(1.1);
+        box-shadow:
+          0 4px 24px rgba(0, 0, 0, 0.5),
+          0 0 30px var(--accent-glow);
       }
 
+      #helpBtn:active {
+        transform: scale(0.95);
+      }
+
+      /* ========== Help Modal ========== */
       #helpModal {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.8);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 200;
         opacity: 0;
         visibility: hidden;
-        transition:
-          opacity 0.2s,
-          visibility 0.2s;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
       }
 
       #helpModal.visible {
@@ -334,275 +561,748 @@
       }
 
       #helpContent {
-        background: #fff;
-        padding: 30px;
-        border-radius: 8px;
-        max-width: 400px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        padding: 32px;
+        border-radius: 20px;
+        max-width: 440px;
+        font-family: 'Outfit', sans-serif;
+        box-shadow:
+          0 20px 60px rgba(0, 0, 0, 0.6),
+          0 0 100px var(--panel-glow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        transform: scale(0.95) translateY(10px);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      #helpModal.visible #helpContent {
+        transform: scale(1) translateY(0);
       }
 
       #helpContent h2 {
-        margin: 0 0 20px 0;
-        font-size: 20px;
-        color: #000;
+        margin: 0 0 24px 0;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--text-label);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      #helpContent h2::before {
+        content: '';
+        width: 4px;
+        height: 4px;
+        background: var(--accent);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--accent);
       }
 
       #helpContent dl {
         margin: 0;
         display: grid;
         grid-template-columns: auto 1fr;
-        gap: 10px 20px;
+        gap: 12px 24px;
       }
 
       #helpContent dt {
-        font-weight: bold;
-        color: #000;
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 13px;
       }
 
       #helpContent dd {
         margin: 0;
-        color: #333;
+        color: var(--text-secondary);
+        font-size: 13px;
       }
 
       #helpContent kbd {
         display: inline-block;
-        padding: 2px 6px;
-        background: #eee;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-        font-family: monospace;
-        font-size: 12px;
+        padding: 3px 8px;
+        background: rgba(130, 204, 221, 0.1);
+        border: 1px solid var(--panel-border);
+        border-radius: 5px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: var(--accent);
       }
 
       #closeHelp {
-        margin-top: 20px;
-        padding: 8px 20px;
-        background: #000;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
+        margin-top: 28px;
+        padding: 12px 28px;
+        background: rgba(130, 204, 221, 0.15);
+        color: var(--accent);
+        border: 1px solid var(--accent-dim);
+        border-radius: 10px;
         cursor: pointer;
-        font-size: 14px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       #closeHelp:hover {
-        background: #333;
+        background: rgba(130, 204, 221, 0.25);
+        box-shadow: 0 0 20px var(--panel-glow);
+        transform: translateY(-1px);
       }
 
-      #chainScoreHUD {
+      #closeHelp:active {
+        transform: translateY(0);
+      }
+
+      /* ========== Game HUDs ========== */
+      .game-hud {
         position: fixed;
-        top: 20px;
-        left: 20px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
+        top: 24px;
+        left: 24px;
         z-index: 100;
         pointer-events: none;
         opacity: 0;
-        transition: opacity 0.3s;
+        transform: translateY(-8px);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .game-hud.active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .game-hud .hud-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        color: var(--text-label);
+        margin-bottom: 4px;
+      }
+
+      .game-hud .hud-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 56px;
+        font-weight: 600;
+        color: var(--accent);
+        text-shadow: 0 0 40px var(--accent-glow);
+        line-height: 1;
+        letter-spacing: -2px;
+      }
+
+      .game-hud .hud-sub {
+        font-family: 'Outfit', sans-serif;
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 6px;
+      }
+
+      .game-hud .hud-success {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--accent);
+        margin-top: 10px;
+        text-shadow: 0 0 12px var(--accent-glow);
+      }
+
+      .game-hud .hud-warning {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--danger);
+        margin-top: 10px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        text-shadow: 0 0 12px var(--danger-glow);
+      }
+
+      .game-hud .hud-warning.visible {
+        opacity: 1;
+      }
+
+      /* ========== Chain Reaction HUD - Dramatic Arcade Style ========== */
+      @keyframes chainPulse {
+        0%, 100% {
+          text-shadow: 0 0 40px var(--chain-glow), 0 0 80px var(--chain-glow);
+          transform: scale(1);
+        }
+        50% {
+          text-shadow: 0 0 60px var(--chain-glow), 0 0 120px var(--chain-glow), 0 0 180px var(--chain-glow);
+          transform: scale(1.02);
+        }
+      }
+
+      @keyframes chainLabelGlow {
+        0%, 100% { opacity: 0.8; }
+        50% { opacity: 1; }
+      }
+
+      @keyframes scoreIncrement {
+        0% { transform: scale(1.3); color: #fff; }
+        100% { transform: scale(1); color: var(--chain-color); }
+      }
+
+      #chainScoreHUD {
+        --chain-color: #ff6b35;
+        --chain-glow: rgba(255, 107, 53, 0.6);
+        --chain-bg: rgba(255, 107, 53, 0.08);
       }
 
       #chainScoreHUD.active {
         opacity: 1;
+        transform: translateY(0);
       }
 
-      #chainScoreHUD .score-current {
-        font-size: 48px;
-        font-weight: bold;
-        color: #fff;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      #chainScoreHUD .hud-label {
+        font-size: 11px;
+        letter-spacing: 4px;
+        color: var(--chain-color);
+        text-shadow: 0 0 20px var(--chain-glow);
+        margin-bottom: 2px;
+      }
+
+      #chainScoreHUD.chain-active .hud-label {
+        animation: chainLabelGlow 1.5s ease-in-out infinite;
+      }
+
+      #chainScoreHUD .hud-value {
+        font-size: 72px;
+        font-weight: 600;
+        color: var(--chain-color);
+        text-shadow: 0 0 40px var(--chain-glow), 0 0 80px var(--chain-glow);
+        line-height: 0.9;
+        letter-spacing: -4px;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      #chainScoreHUD.chain-active .hud-value {
+        animation: chainPulse 2s ease-in-out infinite;
+      }
+
+      #chainScoreHUD .hud-value.score-bump {
+        animation: scoreIncrement 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      #chainScoreHUD .hud-sub {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 500;
+        color: rgba(255, 107, 53, 0.7);
+        margin-top: 8px;
+        letter-spacing: 1px;
+      }
+
+      #chainScoreHUD .chain-multiplier {
+        display: none;
+        padding: 6px 12px;
+        background: var(--chain-bg);
+        border: 1px solid rgba(255, 107, 53, 0.3);
+        border-radius: 6px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--chain-color);
+        margin-top: 14px;
+        text-shadow: 0 0 10px var(--chain-glow);
+        letter-spacing: 1px;
+      }
+
+      #chainScoreHUD.chain-active .chain-multiplier {
+        animation: chainLabelGlow 1.5s ease-in-out infinite;
+        box-shadow: 0 0 20px var(--chain-bg);
+      }
+
+      /* ========== GAME SCOREBOARD - Vintage Sports Card ========== */
+
+      #gameBoard {
+        position: fixed;
+        bottom: 80px;
+        left: 24px;
+        z-index: 100;
+        font-family: 'Oswald', sans-serif;
+      }
+
+      /* Collapsed Toggle Button */
+      .scoreboard-toggle {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        background: linear-gradient(180deg, #f5f0e6 0%, #ebe6d9 100%);
+        border: 3px solid #1a1a1a;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        position: relative;
+      }
+
+      .scoreboard-toggle::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.03;
+        pointer-events: none;
+        border-radius: 2px;
+      }
+
+      .scoreboard-toggle:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+      }
+
+      .scoreboard-toggle:active {
+        transform: translateY(0);
+      }
+
+      .toggle-game {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 11px;
+        color: #1a1a1a;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .toggle-score {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 20px;
+        color: #c41e3a;
         line-height: 1;
       }
 
-      #chainScoreHUD .score-label {
+      .toggle-arrow {
+        font-size: 8px;
+        color: #666;
+        transition: transform 0.3s ease;
+        margin-left: auto;
+      }
+
+      #gameBoard.open .toggle-arrow {
+        transform: rotate(180deg);
+      }
+
+      /* Expanded Card */
+      .scoreboard-card {
+        background: linear-gradient(180deg, #f5f0e6 0%, #ebe6d9 100%);
+        border: 3px solid #1a1a1a;
+        border-radius: 4px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        min-width: 220px;
+        position: relative;
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        margin-top: 0;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      #gameBoard.open .scoreboard-card {
+        max-height: 450px;
+        opacity: 1;
+        margin-top: 10px;
+      }
+
+      .scoreboard-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.03;
+        pointer-events: none;
+      }
+
+      /* Game Tabs */
+      .game-tabs {
+        display: flex;
+        border-bottom: 2px solid #1a1a1a;
+        background: linear-gradient(180deg, #e8e3d6 0%, #ddd8c9 100%);
+      }
+
+      .game-tab {
+        flex: 1;
+        padding: 10px 8px;
+        background: transparent;
+        border: none;
+        border-right: 1px solid rgba(0, 0, 0, 0.15);
+        font-family: 'Oswald', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .game-tab:last-child {
+        border-right: none;
+      }
+
+      .game-tab:hover {
+        background: rgba(0, 0, 0, 0.05);
+        color: #333;
+      }
+
+      .game-tab.active {
+        background: #f5f0e6;
+        color: #c41e3a;
+        box-shadow: inset 0 -3px 0 #c41e3a;
+      }
+
+      .game-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #f5f0e6;
+      }
+
+      /* Scoreboard Content */
+      .scoreboard-content {
+        padding: 16px 20px 20px;
+        display: none;
+      }
+
+      .scoreboard-content.active {
+        display: block;
+      }
+
+      .score-header {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #888;
+        margin-bottom: 4px;
+      }
+
+      .score-main {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 52px;
+        line-height: 1;
+        color: #1a1a1a;
+        letter-spacing: -2px;
+        margin-bottom: 8px;
+      }
+
+      .score-main.highlight {
+        color: #c41e3a;
+      }
+
+      .score-detail {
+        font-family: 'Oswald', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        color: #666;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+
+      .score-detail strong {
+        color: #1a1a1a;
+        font-weight: 600;
+      }
+
+      .score-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.15), transparent);
+        margin: 12px 0;
+      }
+
+      /* Action Buttons in Scoreboard */
+      .scoreboard-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .score-btn {
+        flex: 1;
+        padding: 10px 12px;
+        background: #1a1a1a;
+        color: #f5f0e6;
+        border: none;
+        border-radius: 3px;
+        font-family: 'Oswald', sans-serif;
         font-size: 12px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 2px;
-        color: rgba(255, 255, 255, 0.7);
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: all 0.2s ease;
       }
 
-      #chainScoreHUD .score-best {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 4px;
+      .score-btn:hover {
+        background: #c41e3a;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
       }
 
-      #golfHUD {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        z-index: 100;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.3s;
+      .score-btn:active {
+        transform: translateY(0);
       }
 
-      #golfHUD.active {
-        opacity: 1;
+      .score-btn.secondary {
+        background: transparent;
+        color: #1a1a1a;
+        border: 2px solid #1a1a1a;
       }
 
-      #golfHUD .golf-hole {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: rgba(255, 255, 255, 0.7);
+      .score-btn.secondary:hover {
+        background: #1a1a1a;
+        color: #f5f0e6;
       }
 
-      #golfHUD .golf-strokes {
-        font-size: 48px;
-        font-weight: bold;
-        color: #fff;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        line-height: 1;
+      /* Game-specific Scoreboard Styles */
+
+      /* Chain Reaction */
+      .chain-score-display {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
       }
 
-      #golfHUD .golf-par {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 4px;
+      .chain-score-display .score-main {
+        margin-bottom: 0;
       }
 
-      #golfHUD .golf-total {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 8px;
-      }
-
-      #golfHUD .golf-complete {
+      .chain-score-display .score-of {
+        font-family: 'Oswald', sans-serif;
         font-size: 18px;
-        font-weight: bold;
-        color: #82ccdd;
+        color: #888;
+      }
+
+      .chain-pct {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #c41e3a;
+        color: #fff;
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 14px;
+        border-radius: 2px;
+        margin-left: 8px;
+      }
+
+      /* Golf */
+      .golf-hole-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .golf-hole-num {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 14px;
+        color: #1a1a1a;
+      }
+
+      .golf-par-badge {
+        padding: 3px 10px;
+        background: #1a1a1a;
+        color: #f5f0e6;
+        font-family: 'Oswald', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        border-radius: 2px;
+      }
+
+      .golf-result {
+        font-family: 'Archivo Black', sans-serif;
+        font-size: 16px;
+        color: #c41e3a;
         margin-top: 8px;
       }
 
-      #pinballHUD {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        z-index: 100;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.3s;
+      /* Pinball */
+      .pinball-bonus {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #ffd700;
+        color: #1a1a1a;
+        font-family: 'Oswald', sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 2px;
+        margin-left: 8px;
+        animation: bonusPulse 1s ease-in-out infinite;
       }
 
-      #pinballHUD.active {
-        opacity: 1;
+      @keyframes bonusPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
       }
 
-      #pinballHUD .pinball-label {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      #pinballHUD .pinball-score {
+      /* Cluster */
+      .cluster-timer-display {
+        font-family: 'Archivo Black', sans-serif;
         font-size: 48px;
-        font-weight: bold;
-        color: #fff;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        line-height: 1;
+        color: #1a1a1a;
+        letter-spacing: 2px;
       }
 
-      #pinballHUD .pinball-best {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 4px;
+      .cluster-danger {
+        color: #c41e3a;
+        animation: dangerPulse 0.5s ease-in-out infinite;
       }
 
+      @keyframes dangerPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+
+      /* Sandbox (no game selected) */
+      .sandbox-message {
+        font-family: 'Oswald', sans-serif;
+        font-size: 13px;
+        color: #888;
+        text-align: center;
+        padding: 10px 0;
+        font-style: italic;
+      }
+
+      /* Hide old HUDs - scoreboard handles all game display */
+      #chainScoreHUD,
+      #golfHUD,
+      #pinballHUD,
       #clusterHUD {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        z-index: 100;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-
-      #clusterHUD.active {
-        opacity: 1;
-      }
-
-      #clusterHUD .cluster-label {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: rgba(255, 255, 255, 0.7);
-      }
-
-      #clusterHUD .cluster-timer {
-        font-size: 48px;
-        font-weight: bold;
-        color: #fff;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        line-height: 1;
-      }
-
-      #clusterHUD .cluster-best {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.6);
-        margin-top: 4px;
-      }
-
-      #clusterHUD .cluster-warning {
-        font-size: 18px;
-        color: #ff4444;
-        font-weight: bold;
-        margin-top: 8px;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-
-      #clusterHUD .cluster-warning.visible {
-        opacity: 1;
+        display: none !important;
       }
     </style>
   </head>
   <body>
     <svg id="canvas"></svg>
 
-    <div id="chainScoreHUD">
-      <div class="score-label">Chain</div>
-      <div class="score-current" id="chainScoreValue">0</div>
-      <div class="score-best" id="chainBestValue"></div>
+    <div id="chainScoreHUD" class="game-hud">
+      <div class="hud-label">Chain</div>
+      <div class="hud-value" id="chainScoreValue">0</div>
+      <div class="hud-sub" id="chainBestValue"></div>
+      <div class="chain-multiplier" id="chainMultiplier"></div>
     </div>
 
-    <div id="golfHUD">
-      <div class="golf-hole" id="golfHoleLabel">Hole 1</div>
-      <div class="golf-strokes" id="golfStrokesValue">0</div>
-      <div class="golf-par" id="golfParLabel">Par 3</div>
-      <div class="golf-total" id="golfTotalLabel"></div>
-      <div class="golf-complete" id="golfCompleteLabel"></div>
+    <div id="golfHUD" class="game-hud">
+      <div class="hud-label" id="golfHoleLabel">Hole 1</div>
+      <div class="hud-value" id="golfStrokesValue">0</div>
+      <div class="hud-sub" id="golfParLabel">Par 3</div>
+      <div class="hud-sub" id="golfTotalLabel"></div>
+      <div class="hud-success" id="golfCompleteLabel"></div>
     </div>
 
-    <div id="pinballHUD">
-      <div class="pinball-label">Pinball</div>
-      <div class="pinball-score" id="pinballScoreValue">0</div>
-      <div class="pinball-best" id="pinballBestLabel">Best: 0</div>
+    <div id="pinballHUD" class="game-hud">
+      <div class="hud-label">Pinball</div>
+      <div class="hud-value" id="pinballScoreValue">0</div>
+      <div class="hud-sub" id="pinballBestLabel">Best: 0</div>
     </div>
 
-    <div id="clusterHUD">
-      <div class="cluster-label">Cluster</div>
-      <div class="cluster-timer" id="clusterTimerValue">0:00</div>
-      <div class="cluster-best" id="clusterBestLabel">Best: 0:00</div>
-      <div class="cluster-warning" id="clusterWarning">CRITICAL MASS!</div>
+    <div id="clusterHUD" class="game-hud">
+      <div class="hud-label">Cluster</div>
+      <div class="hud-value" id="clusterTimerValue">0:00</div>
+      <div class="hud-sub" id="clusterBestLabel">Best: 0:00</div>
+      <div class="hud-warning" id="clusterWarning">CRITICAL MASS!</div>
+    </div>
+
+    <!-- Hidden game controls for backwards compatibility -->
+    <input type="checkbox" id="chainReactionToggle" style="display:none" />
+    <input type="checkbox" id="golfToggle" style="display:none" />
+    <input type="checkbox" id="pinballToggle" style="display:none" />
+    <input type="checkbox" id="clusterToggle" style="display:none" />
+    <button id="chainStartBtn" style="display:none"></button>
+    <button id="chainResetBtn" style="display:none"></button>
+    <button id="golfStartBtn" style="display:none"></button>
+    <button id="golfNextBtn" style="display:none"></button>
+    <button id="pinballStartBtn" style="display:none"></button>
+    <button id="clusterStartBtn" style="display:none"></button>
+    <div id="chainThresholdRow" style="display:none">
+      <input type="range" id="chainThresholdSlider" value="8" />
+      <span id="chainThresholdValue">8</span>
+    </div>
+
+    <!-- Game Scoreboard -->
+    <div id="gameBoard">
+      <div class="scoreboard-toggle" id="scoreboardToggle">
+        <span class="toggle-game" id="toggleGameName">Free Play</span>
+        <span class="toggle-score" id="toggleScoreValue"></span>
+        <span class="toggle-arrow">▲</span>
+      </div>
+      <div class="scoreboard-card">
+        <div class="game-tabs">
+          <button class="game-tab active" data-game="sandbox">Free</button>
+          <button class="game-tab" data-game="chain">Chain</button>
+          <button class="game-tab" data-game="golf">Golf</button>
+          <button class="game-tab" data-game="pinball">Pinball</button>
+          <button class="game-tab" data-game="cluster">Cluster</button>
+        </div>
+
+        <!-- Sandbox (Free Play) -->
+        <div class="scoreboard-content active" data-game="sandbox">
+          <div class="sandbox-message">Double-click to create dots</div>
+          <div class="score-detail"><strong id="sandboxDotCount">0</strong> dots in play</div>
+        </div>
+
+        <!-- Chain Reaction -->
+        <div class="scoreboard-content" data-game="chain">
+          <div class="score-header">Chain Hits</div>
+          <div class="chain-score-display">
+            <div class="score-main" id="chainScoreMain">0</div>
+            <span class="score-of">/ <span id="chainTotalDots">0</span></span>
+          </div>
+          <div id="chainPctBadge" class="chain-pct" style="display: none;">0%</div>
+          <div class="score-divider"></div>
+          <div class="score-detail" id="chainStatusText">Place dots, then start</div>
+          <div class="scoreboard-actions">
+            <button class="score-btn" id="chainStartBtn2">Start Chain</button>
+            <button class="score-btn secondary" id="chainResetBtn2">Reset</button>
+          </div>
+        </div>
+
+        <!-- Golf -->
+        <div class="scoreboard-content" data-game="golf">
+          <div class="golf-hole-display">
+            <span class="golf-hole-num" id="golfHoleNum">Hole 1</span>
+            <span class="golf-par-badge" id="golfParBadge">PAR 3</span>
+          </div>
+          <div class="score-header">Strokes</div>
+          <div class="score-main" id="golfStrokesMain">0</div>
+          <div class="golf-result" id="golfResultText"></div>
+          <div class="score-divider"></div>
+          <div class="score-detail">Total: <strong id="golfTotalScore">E</strong></div>
+          <div class="scoreboard-actions">
+            <button class="score-btn" id="golfActionBtn">Start Hole</button>
+          </div>
+        </div>
+
+        <!-- Pinball -->
+        <div class="scoreboard-content" data-game="pinball">
+          <div class="score-header">Score</div>
+          <div class="score-main highlight" id="pinballScoreMain">0</div>
+          <div class="score-divider"></div>
+          <div class="score-detail">Best: <strong id="pinballBestScore">0</strong></div>
+          <div class="scoreboard-actions">
+            <button class="score-btn" id="pinballActionBtn">Start Round</button>
+          </div>
+        </div>
+
+        <!-- Cluster -->
+        <div class="scoreboard-content" data-game="cluster">
+          <div class="score-header">Survival Time</div>
+          <div class="cluster-timer-display" id="clusterTimerMain">0:00</div>
+          <div class="score-divider"></div>
+          <div class="score-detail">Best: <strong id="clusterBestTime">0:00</strong></div>
+          <div class="score-detail" id="clusterWarningText" style="color: #c41e3a; display: none;">CRITICAL MASS!</div>
+          <div class="scoreboard-actions">
+            <button class="score-btn" id="clusterActionBtn">Start</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="modifiers">
@@ -651,11 +1351,11 @@
           <dt><kbd>Esc</kbd></dt>
           <dd>Close panels</dd>
 
-          <dt>Chain Reaction</dt>
-          <dd>Enable in ⚙, place dots, click Start Chain, throw</dd>
+          <dt>Games</dt>
+          <dd>Select from scoreboard (bottom-left)</dd>
 
-          <dt>Settings</dt>
-          <dd>Click ⚙ for more options</dd>
+          <dt>Debug</dt>
+          <dd>Click ⚙ for physics settings</dd>
         </dl>
         <button id="closeHelp">Got it</button>
       </div>
@@ -737,59 +1437,6 @@
               <option value="sunset">Sunset</option>
             </select>
           </div>
-        </div>
-
-        <div class="control-section">
-          <h3>Game</h3>
-          <div class="control-row">
-            <label for="chainReactionToggle">Chain Reaction</label>
-            <input type="checkbox" id="chainReactionToggle" />
-          </div>
-          <div class="control-row" id="chainThresholdRow" style="display: none">
-            <label for="chainThresholdSlider">Impact threshold</label>
-            <input
-              type="range"
-              id="chainThresholdSlider"
-              min="2"
-              max="20"
-              value="8"
-              step="1"
-            />
-            <span class="value" id="chainThresholdValue">8</span>
-          </div>
-          <button class="action-btn" id="chainStartBtn" style="display: none">
-            Start Chain
-          </button>
-          <button class="action-btn" id="chainResetBtn" style="display: none">
-            Reset Round
-          </button>
-
-          <div class="control-row" style="margin-top: 12px">
-            <label for="golfToggle">Golf</label>
-            <input type="checkbox" id="golfToggle" />
-          </div>
-          <button class="action-btn" id="golfStartBtn" style="display: none">
-            Start Hole
-          </button>
-          <button class="action-btn" id="golfNextBtn" style="display: none">
-            Next Hole
-          </button>
-
-          <div class="control-row" style="margin-top: 12px">
-            <label for="pinballToggle">Pinball</label>
-            <input type="checkbox" id="pinballToggle" />
-          </div>
-          <button class="action-btn" id="pinballStartBtn" style="display: none">
-            Start Round
-          </button>
-
-          <div class="control-row" style="margin-top: 12px">
-            <label for="clusterToggle">Cluster</label>
-            <input type="checkbox" id="clusterToggle" />
-          </div>
-          <button class="action-btn" id="clusterStartBtn" style="display: none">
-            Start
-          </button>
         </div>
 
         <div class="control-section">
@@ -1246,13 +1893,29 @@
         render();
       }
 
+      let lastChainScore = 0;
+
       function updateChainScoreDisplay() {
+        const hud = document.getElementById("chainScoreHUD");
         const scoreEl = document.getElementById("chainScoreValue");
         const bestEl = document.getElementById("chainBestValue");
-        if (!scoreEl) return;
+        const multiplierEl = document.getElementById("chainMultiplier");
+        if (!scoreEl || !hud) return;
+
+        // Add score bump animation when score increases
+        if (chainReactionScore > lastChainScore && chainReactionActive) {
+          scoreEl.classList.remove("score-bump");
+          void scoreEl.offsetWidth; // Trigger reflow to restart animation
+          scoreEl.classList.add("score-bump");
+        }
+        lastChainScore = chainReactionScore;
 
         scoreEl.textContent = chainReactionScore;
 
+        // Toggle chain-active class for pulsing effects
+        hud.classList.toggle("chain-active", chainReactionActive);
+
+        // Update best label
         const parts = [];
         if (chainReactionBest > 0) {
           parts.push("Best: " + chainReactionBest);
@@ -1262,7 +1925,20 @@
         } else if (chainReactionScore > 0) {
           parts.push("Hit " + chainReactionScore + "/" + dots.length);
         }
-        bestEl.textContent = parts.join(" | ");
+        bestEl.textContent = parts.join(" · ");
+
+        // Update multiplier display
+        if (chainReactionActive && dots.length > 0) {
+          const percentage = Math.round((chainReactionScore / dots.length) * 100);
+          multiplierEl.textContent = percentage + "% CHAIN";
+          multiplierEl.style.display = "inline-block";
+        } else if (!chainReactionActive && chainReactionScore > 0) {
+          const percentage = Math.round((chainReactionScore / dots.length) * 100);
+          multiplierEl.textContent = percentage + "% HIT";
+          multiplierEl.style.display = "inline-block";
+        } else {
+          multiplierEl.style.display = "none";
+        }
       }
 
       // ========== GOLF GAME ==========
@@ -1992,10 +2668,16 @@
 
         // Show warning when coverage is high
         const warning = document.getElementById("clusterWarning");
+        const warningText = document.getElementById("clusterWarningText");
+        const timerDisplay = document.getElementById("clusterTimerMain");
         if (coverage > 0.3) {
           warning.classList.add("visible");
+          if (warningText) warningText.style.display = "block";
+          if (timerDisplay) timerDisplay.classList.add("cluster-danger");
         } else {
           warning.classList.remove("visible");
+          if (warningText) warningText.style.display = "none";
+          if (timerDisplay) timerDisplay.classList.remove("cluster-danger");
         }
 
         // Lose if coverage too high or a dot is too big
@@ -3501,8 +4183,259 @@
         }
       });
 
+      // ========== GAME SCOREBOARD ==========
+      let currentGame = "sandbox";
+      let scoreboardOpen = false;
+
+      // Toggle scoreboard open/closed
+      document.getElementById("scoreboardToggle").addEventListener("click", () => {
+        scoreboardOpen = !scoreboardOpen;
+        document.getElementById("gameBoard").classList.toggle("open", scoreboardOpen);
+      });
+
+      // Get display name for game
+      function getGameDisplayName(game) {
+        const names = {
+          sandbox: "Free Play",
+          chain: "Chain",
+          golf: "Golf",
+          pinball: "Pinball",
+          cluster: "Cluster"
+        };
+        return names[game] || game;
+      }
+
+      // Get current score for collapsed view
+      function getCurrentScoreDisplay() {
+        switch (currentGame) {
+          case "chain":
+            return chainReactionScore > 0 ? chainReactionScore.toString() : "";
+          case "golf":
+            return golfStrokes > 0 ? golfStrokes.toString() : "";
+          case "pinball":
+            return pinballScore > 0 ? pinballScore.toString() : "";
+          case "cluster":
+            return clusterTimeElapsed > 0 ? formatClusterTime(clusterTimeElapsed) : "";
+          default:
+            return dots.length > 0 ? dots.length.toString() : "";
+        }
+      }
+
+      function switchGame(gameName) {
+        // Exit current game
+        if (currentGame !== gameName) {
+          if (currentGame === "chain") {
+            chainReactionToggle.checked = false;
+            chainReactionToggle.dispatchEvent(new Event("change"));
+          } else if (currentGame === "golf") {
+            golfToggle.checked = false;
+            golfToggle.dispatchEvent(new Event("change"));
+          } else if (currentGame === "pinball") {
+            pinballToggle.checked = false;
+            pinballToggle.dispatchEvent(new Event("change"));
+          } else if (currentGame === "cluster") {
+            clusterToggle.checked = false;
+            clusterToggle.dispatchEvent(new Event("change"));
+          }
+        }
+
+        currentGame = gameName;
+
+        // Update tabs
+        document.querySelectorAll(".game-tab").forEach((tab) => {
+          tab.classList.toggle("active", tab.dataset.game === gameName);
+        });
+
+        // Update content panels
+        document.querySelectorAll(".scoreboard-content").forEach((panel) => {
+          panel.classList.toggle("active", panel.dataset.game === gameName);
+        });
+
+        // Enter new game mode
+        if (gameName === "chain") {
+          chainReactionToggle.checked = true;
+          chainReactionToggle.dispatchEvent(new Event("change"));
+        } else if (gameName === "golf") {
+          golfToggle.checked = true;
+          golfToggle.dispatchEvent(new Event("change"));
+        } else if (gameName === "pinball") {
+          pinballToggle.checked = true;
+          pinballToggle.dispatchEvent(new Event("change"));
+        } else if (gameName === "cluster") {
+          clusterToggle.checked = true;
+          clusterToggle.dispatchEvent(new Event("change"));
+        }
+
+        updateScoreboard();
+      }
+
+      // Tab click handlers
+      document.querySelectorAll(".game-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          switchGame(tab.dataset.game);
+        });
+      });
+
+      // Scoreboard button handlers
+      document.getElementById("chainStartBtn2").addEventListener("click", () => {
+        if (chainReactionActive) return;
+        chainWaitingForThrow = true;
+        document.getElementById("chainStartBtn2").textContent = "Throw a dot!";
+        document.getElementById("chainStatusText").textContent = "Throw any dot to start!";
+      });
+
+      document.getElementById("chainResetBtn2").addEventListener("click", () => {
+        chainWaitingForThrow = false;
+        document.getElementById("chainStartBtn2").textContent = "Start Chain";
+        resetChainReaction();
+        updateScoreboard();
+      });
+
+      document.getElementById("golfActionBtn").addEventListener("click", () => {
+        if (golfHoleComplete) {
+          nextGolfHole();
+        } else if (golfBallId === null) {
+          startGolfHole();
+        }
+        updateScoreboard();
+      });
+
+      document.getElementById("pinballActionBtn").addEventListener("click", () => {
+        startPinballRound();
+        updateScoreboard();
+      });
+
+      document.getElementById("clusterActionBtn").addEventListener("click", () => {
+        startClusterRound();
+        updateScoreboard();
+      });
+
+      // Update scoreboard display
+      function updateScoreboard() {
+        // Sandbox
+        document.getElementById("sandboxDotCount").textContent = dots.length;
+
+        // Chain
+        document.getElementById("chainScoreMain").textContent = chainReactionScore;
+        document.getElementById("chainTotalDots").textContent = dots.length;
+
+        const chainPctBadge = document.getElementById("chainPctBadge");
+        if (chainReactionActive || chainReactionScore > 0) {
+          const pct = dots.length > 0 ? Math.round((chainReactionScore / dots.length) * 100) : 0;
+          chainPctBadge.textContent = pct + "%";
+          chainPctBadge.style.display = "inline-block";
+        } else {
+          chainPctBadge.style.display = "none";
+        }
+
+        if (chainReactionActive) {
+          document.getElementById("chainStatusText").textContent = "Chain reaction in progress...";
+          document.getElementById("chainStartBtn2").textContent = "In Progress";
+        } else if (chainReactionScore > 0) {
+          document.getElementById("chainStatusText").textContent = "Round complete!";
+          document.getElementById("chainStartBtn2").textContent = "Start Chain";
+        } else {
+          document.getElementById("chainStatusText").textContent = "Place dots, then start";
+          document.getElementById("chainStartBtn2").textContent = "Start Chain";
+        }
+
+        // Golf
+        document.getElementById("golfHoleNum").textContent = "Hole " + golfHoleNumber;
+        document.getElementById("golfParBadge").textContent = "PAR " + golfPar;
+        document.getElementById("golfStrokesMain").textContent = golfStrokes;
+
+        if (golfTotalScore === 0) {
+          document.getElementById("golfTotalScore").textContent = "E";
+        } else if (golfTotalScore > 0) {
+          document.getElementById("golfTotalScore").textContent = "+" + golfTotalScore;
+        } else {
+          document.getElementById("golfTotalScore").textContent = golfTotalScore;
+        }
+
+        const golfActionBtn = document.getElementById("golfActionBtn");
+        const golfResultText = document.getElementById("golfResultText");
+        if (golfHoleComplete) {
+          const diff = golfStrokes - golfPar;
+          let msg = "";
+          if (diff === -2) msg = "EAGLE!";
+          else if (diff === -1) msg = "BIRDIE!";
+          else if (diff === 0) msg = "PAR";
+          else if (diff === 1) msg = "BOGEY";
+          else if (diff === 2) msg = "DOUBLE BOGEY";
+          else if (diff > 2) msg = "+" + diff;
+          else msg = diff.toString();
+          golfResultText.textContent = msg;
+          golfActionBtn.textContent = "Next Hole";
+        } else if (golfBallId !== null) {
+          golfResultText.textContent = "";
+          golfActionBtn.textContent = "Playing...";
+        } else {
+          golfResultText.textContent = "";
+          golfActionBtn.textContent = "Start Hole";
+        }
+
+        // Pinball
+        document.getElementById("pinballScoreMain").textContent = pinballScore;
+        document.getElementById("pinballBestScore").textContent = pinballBest;
+
+        const pinballActionBtn = document.getElementById("pinballActionBtn");
+        if (pinballRoundActive) {
+          pinballActionBtn.textContent = "Playing...";
+        } else {
+          pinballActionBtn.textContent = "Start Round";
+        }
+
+        // Cluster
+        document.getElementById("clusterTimerMain").textContent = formatClusterTime(clusterTimeElapsed);
+        document.getElementById("clusterBestTime").textContent = formatClusterTime(clusterBest);
+
+        const clusterActionBtn = document.getElementById("clusterActionBtn");
+        if (clusterRoundActive) {
+          clusterActionBtn.textContent = "Survive!";
+        } else {
+          clusterActionBtn.textContent = clusterTimeElapsed > 0 ? "Try Again" : "Start";
+        }
+
+        // Update collapsed toggle display
+        document.getElementById("toggleGameName").textContent = getGameDisplayName(currentGame);
+        document.getElementById("toggleScoreValue").textContent = getCurrentScoreDisplay();
+      }
+
+      // Hook into existing update functions to refresh scoreboard
+      const originalUpdateChainScoreDisplay = updateChainScoreDisplay;
+      updateChainScoreDisplay = function () {
+        originalUpdateChainScoreDisplay();
+        updateScoreboard();
+      };
+
+      const originalUpdateGolfHUD = updateGolfHUD;
+      updateGolfHUD = function () {
+        originalUpdateGolfHUD();
+        updateScoreboard();
+      };
+
+      const originalUpdatePinballHUD = updatePinballHUD;
+      updatePinballHUD = function () {
+        originalUpdatePinballHUD();
+        updateScoreboard();
+      };
+
+      const originalUpdateClusterHUD = updateClusterHUD;
+      updateClusterHUD = function () {
+        originalUpdateClusterHUD();
+        updateScoreboard();
+      };
+
+      // Update dot count periodically for sandbox mode
+      setInterval(() => {
+        if (currentGame === "sandbox") {
+          document.getElementById("sandboxDotCount").textContent = dots.length;
+        }
+      }, 500);
+
       // Initial render
       render();
+      updateScoreboard();
     </script>
   </body>
 </html>
