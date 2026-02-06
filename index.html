@@ -1617,6 +1617,9 @@
           <dt><kbd>L</kbd></dt>
           <dd>Toggle lock mode</dd>
 
+          <dt><kbd>O</kbd></dt>
+          <dd>Toggle orbit mode</dd>
+
           <dt><kbd>S</kbd></dt>
           <dd>Stop all dots</dd>
 
@@ -1715,6 +1718,10 @@
           <div class="control-row">
             <label for="freezeToggle">Freeze</label>
             <input type="checkbox" id="freezeToggle" />
+          </div>
+          <div class="control-row">
+            <label for="orbitToggle">Orbit <span class="kbd-hint">(O)</span></label>
+            <input type="checkbox" id="orbitToggle" />
           </div>
         </div>
 
@@ -1821,6 +1828,14 @@
 
       // Lock mode state
       let lockMode = false;
+
+      // Orbit mode state
+      let orbitMode = false;
+      let orbitSunId = null; // The central attractor dot
+      const orbitingDots = new Set(); // Track which dots are orbiting
+      const MAX_ORBITERS = 10;
+      const ORBIT_GRAVITY = 0.08; // Gravitational pull strength
+      const ORBIT_SUN_RADIUS = 40; // Size of the sun
 
       // Color themes
       const themes = {
@@ -3156,6 +3171,19 @@
         circles.exit().remove();
 
         const theme = themes[currentTheme];
+
+        function getStroke(d) {
+          if (d.isSun) return "#FF8C00"; // Dark orange for sun
+          if (d.locked) return "#ffc107";
+          return theme.dotStroke;
+        }
+
+        function getStrokeWidth(d) {
+          if (d.isSun) return 4;
+          if (d.locked) return 3;
+          return STROKE_WIDTH;
+        }
+
         circles
           .enter()
           .append("circle")
@@ -3163,8 +3191,8 @@
           .attr("cy", (d) => d.y)
           .attr("r", (d) => d.radius)
           .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", (d) => d.locked ? "#ffc107" : theme.dotStroke)
-          .attr("stroke-width", (d) => d.locked ? 3 : STROKE_WIDTH)
+          .attr("stroke", getStroke)
+          .attr("stroke-width", getStrokeWidth)
           .on("mousedown", onDotMouseDown)
           .on("mouseup", onDotMouseUp)
           .on("mouseleave", onDotMouseLeave)
@@ -3177,8 +3205,8 @@
           .attr("cx", (d) => d.x)
           .attr("cy", (d) => d.y)
           .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", (d) => d.locked ? "#ffc107" : theme.dotStroke)
-          .attr("stroke-width", (d) => d.locked ? 3 : STROKE_WIDTH)
+          .attr("stroke", getStroke)
+          .attr("stroke-width", getStrokeWidth)
           .attr("r", (d) => d.radius);
       }
 
@@ -3815,6 +3843,55 @@
           }
         }
 
+        // Step 1.5: Apply orbital gravity (dots pulled toward sun)
+        if (orbitMode && orbitSunId !== null && !isFrozen) {
+          const sun = dots.find(d => d.id === orbitSunId);
+          if (sun) {
+            for (const dot of dots) {
+              // Skip the sun itself and locked dots
+              if (dot.id === orbitSunId || dot.locked) continue;
+
+              // Skip if we're at max orbiters and this dot isn't already orbiting
+              if (orbitingDots.size >= MAX_ORBITERS && !orbitingDots.has(dot.id)) continue;
+
+              const dx = sun.x - dot.x;
+              const dy = sun.y - dot.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+
+              // Skip if too close (inside sun) or too far
+              const minDist = sun.radius + dot.radius;
+              if (dist < minDist) continue;
+
+              const maxRange = 400; // Max orbital range
+              if (dist > maxRange) {
+                // Remove from orbiters if too far
+                orbitingDots.delete(dot.id);
+                continue;
+              }
+
+              // Add to orbiters
+              orbitingDots.add(dot.id);
+
+              // Gravitational pull (stronger when closer)
+              const forceMag = ORBIT_GRAVITY * (sun.radius / 40) * (1 + 100 / dist);
+
+              // Direction toward sun
+              const nx = dx / dist;
+              const ny = dy / dist;
+
+              // Apply gravitational acceleration
+              let vel = dotVelocities.get(dot.id);
+              if (!vel) {
+                vel = { vx: 0, vy: 0 };
+                dotVelocities.set(dot.id, vel);
+              }
+
+              vel.vx += nx * forceMag;
+              vel.vy += ny * forceMag;
+            }
+          }
+        }
+
         // Step 2: Apply velocities to positions (only dragged dot if frozen, skip locked)
         for (const [dotId, vel] of dotVelocities) {
           if (isFrozen && dotId !== dragDotId) continue;
@@ -4152,6 +4229,62 @@
           dotVelocities.clear();
           noFrictionDots.clear();
           boostedDots.clear();
+        }
+      });
+
+      // Orbit mode toggle
+      const orbitToggle = document.getElementById("orbitToggle");
+
+      function enableOrbitMode() {
+        orbitMode = true;
+        orbitToggle.checked = true;
+
+        // Create sun in center if it doesn't exist
+        if (orbitSunId === null) {
+          const sunX = window.innerWidth / 2;
+          const sunY = window.innerHeight / 2;
+
+          // Remove any dot near center to make room
+          dots = dots.filter(d => {
+            const dx = d.x - sunX;
+            const dy = d.y - sunY;
+            return Math.sqrt(dx*dx + dy*dy) > ORBIT_SUN_RADIUS + d.radius;
+          });
+
+          // Create the sun
+          const sun = {
+            id: nextId++,
+            x: sunX,
+            y: sunY,
+            radius: ORBIT_SUN_RADIUS,
+            locked: true,
+            color: "#FFD700", // Gold color for sun
+            isSun: true
+          };
+          dots.push(sun);
+          orbitSunId = sun.id;
+          render();
+        }
+      }
+
+      function disableOrbitMode() {
+        orbitMode = false;
+        orbitToggle.checked = false;
+
+        // Remove the sun
+        if (orbitSunId !== null) {
+          dots = dots.filter(d => d.id !== orbitSunId);
+          orbitSunId = null;
+          orbitingDots.clear();
+          render();
+        }
+      }
+
+      orbitToggle.addEventListener("change", () => {
+        if (orbitToggle.checked) {
+          enableOrbitMode();
+        } else {
+          disableOrbitMode();
         }
       });
 
@@ -4597,6 +4730,12 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
+        // Reset orbit mode
+        if (orbitMode) {
+          orbitSunId = null;
+          orbitingDots.clear();
+          disableOrbitMode();
+        }
         render();
       });
 
@@ -4631,6 +4770,13 @@
         }
         if (e.key === "l" || e.key === "L") {
           toggleLockMode();
+        }
+        if (e.key === "o" || e.key === "O") {
+          if (orbitMode) {
+            disableOrbitMode();
+          } else {
+            enableOrbitMode();
+          }
         }
         if (e.key === "s" || e.key === "S") {
           // Stop all dots
