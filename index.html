@@ -3887,7 +3887,7 @@
           }
         }
 
-        // Step 1.5: Apply orbital gravity (dots pulled toward sun)
+        // Step 1.5: Apply orbital mechanics (dots orbit around sun)
         if (orbitMode && orbitSunId !== null && !isFrozen) {
           const sun = dots.find(d => d.id === orbitSunId);
           if (sun) {
@@ -3904,8 +3904,8 @@
               const dy = sun.y - dot.y;
               const dist = Math.sqrt(dx * dx + dy * dy);
 
-              // Skip if too close (inside sun) or too far
-              const minDist = sun.radius + dot.radius;
+              // Skip if too close (inside sun)
+              const minDist = sun.radius + dot.radius + 5;
               if (dist < minDist) continue;
 
               const maxRange = 500; // Max orbital range
@@ -3915,25 +3915,38 @@
                 continue;
               }
 
-              // Add to orbiters
-              orbitingDots.add(dot.id);
-
-              // Gravitational pull - scales with sun size and user-set strength
-              const forceMag = ORBIT_GRAVITY * strength * (sun.radius / 20) * (1 + 50 / dist);
-
-              // Direction toward sun
+              // Direction toward sun (radial)
               const nx = dx / dist;
               const ny = dy / dist;
 
-              // Apply gravitational acceleration
+              // Perpendicular direction (tangential) - for counter-clockwise orbit
+              const tx = -ny;
+              const ty = nx;
+
+              // Get or create velocity
               let vel = dotVelocities.get(dot.id);
+              const isNewOrbiter = !orbitingDots.has(dot.id);
+
               if (!vel) {
                 vel = { vx: 0, vy: 0 };
                 dotVelocities.set(dot.id, vel);
               }
 
-              vel.vx += nx * forceMag;
-              vel.vy += ny * forceMag;
+              // Add to orbiters
+              orbitingDots.add(dot.id);
+
+              // If this is a new orbiter, give it initial tangential velocity
+              if (isNewOrbiter || (Math.abs(vel.vx) < 0.1 && Math.abs(vel.vy) < 0.1)) {
+                // Orbital velocity - faster when closer to maintain orbit
+                const orbitalSpeed = Math.sqrt(ORBIT_GRAVITY * strength * sun.radius * 2 / dist) * 3;
+                vel.vx = tx * orbitalSpeed;
+                vel.vy = ty * orbitalSpeed;
+              }
+
+              // Apply centripetal force (pull toward center) to maintain orbit
+              const centripetalForce = ORBIT_GRAVITY * strength * (sun.radius / 20) / dist * 1.5;
+              vel.vx += nx * centripetalForce;
+              vel.vy += ny * centripetalForce;
             }
           }
         }
