@@ -349,6 +349,8 @@
         font-size: 13px;
         font-weight: 400;
         letter-spacing: 0.2px;
+        min-width: 70px;
+        flex-shrink: 0;
       }
 
       /* Custom Range Slider */
@@ -1415,15 +1417,15 @@
               <input
                 type="range"
                 id="frictionSlider"
-                min="90"
-                max="100"
-                value="98"
+                min="0"
+                max="10"
+                value="2"
                 step="0.5"
               />
-              <span class="value" id="frictionValue">98</span>
+              <span class="value" id="frictionValue">2</span>
             </div>
             <div class="control-row">
-              <label for="bounceSlider">Bounciness</label>
+              <label for="bounceSlider">Bounce</label>
               <input
                 type="range"
                 id="bounceSlider"
@@ -4044,7 +4046,8 @@
 
       // Helper to get current physics values
       function getFriction() {
-        return parseFloat(frictionSlider.value) / 100;
+        // Slider: 0 = no friction (1.0), 10 = max friction (0.9)
+        return 1 - parseFloat(frictionSlider.value) / 100;
       }
 
       function getRestitution() {
