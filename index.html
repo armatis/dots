@@ -502,7 +502,7 @@
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1.5px;
-        pointer-events: auto;
+        pointer-events: none;
         cursor: pointer;
         opacity: 0;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -519,7 +519,13 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      #lockIndicator:hover {
+      #lockIndicator.active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      #lockIndicator.active:hover {
         background: rgba(12, 28, 44, 0.95);
         border-color: #ffc107;
         box-shadow:
@@ -527,13 +533,8 @@
           0 4px 24px rgba(0, 0, 0, 0.5);
       }
 
-      #lockIndicator:active {
+      #lockIndicator.active:active {
         transform: translateY(2px);
-      }
-
-      #lockIndicator.active {
-        opacity: 1;
-        transform: translateY(0);
       }
 
       #lockIndicator.active:active {
@@ -561,7 +562,7 @@
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1.5px;
-        pointer-events: auto;
+        pointer-events: none;
         cursor: pointer;
         opacity: 0;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -578,21 +579,18 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      #paintIndicator:hover {
+      #paintIndicator.active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      #paintIndicator.active:hover {
         background: rgba(12, 28, 44, 0.95);
         border-color: var(--accent);
         box-shadow:
           0 0 50px var(--panel-glow),
           0 4px 24px rgba(0, 0, 0, 0.5);
-      }
-
-      #paintIndicator:active {
-        transform: translateY(2px);
-      }
-
-      #paintIndicator.active {
-        opacity: 1;
-        transform: translateY(0);
       }
 
       #paintIndicator.active:active {
