@@ -694,30 +694,57 @@
       /* ========== Freeze Indicator ========== */
       #freezeIndicator {
         position: fixed;
-        top: 20px;
-        right: 76px;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        bottom: 70px;
+        right: 24px;
+        transform: translateY(20px);
+        padding: 12px 18px;
         background: var(--panel-bg);
-        border: 1px solid var(--accent-dim);
-        border-radius: 10px;
-        font-size: 18px;
+        color: #4ecdc4;
+        border: 1px solid rgba(78, 205, 196, 0.5);
+        border-radius: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
         pointer-events: none;
+        cursor: pointer;
         opacity: 0;
-        transform: scale(0.8);
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 99;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 150;
+        box-shadow:
+          0 0 40px rgba(78, 205, 196, 0.15),
+          0 4px 20px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
       }
 
       #freezeIndicator.active {
         opacity: 1;
-        transform: scale(1);
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      #freezeIndicator.active:hover {
+        background: rgba(12, 28, 44, 0.95);
+        border-color: #4ecdc4;
+        box-shadow:
+          0 0 50px rgba(78, 205, 196, 0.25),
+          0 4px 24px rgba(0, 0, 0, 0.5);
+      }
+
+      #freezeIndicator.active:active {
+        transform: translateY(2px);
+      }
+
+      #freezeIndicator .exit-x {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-left: 6px;
       }
 
       /* ========== Modifier Indicators ========== */
@@ -1569,7 +1596,7 @@
       <div id="perpetualIndicator" class="modifier">∞ PERPETUAL</div>
     </div>
 
-    <div id="freezeIndicator">❄</div>
+    <div id="freezeIndicator">❄ FROZEN <span class="exit-x">✕</span></div>
     <div id="paintIndicator"><span class="color-preview" id="paintColorPreview"></span> PAINT <span class="exit-x">✕</span></div>
     <div id="lockIndicator">🔒 LOCK <span class="exit-x">✕</span></div>
 
@@ -4262,6 +4289,15 @@
           dotVelocities.clear();
           noFrictionDots.clear();
           boostedDots.clear();
+        }
+      });
+
+      // Click freeze indicator to exit freeze mode
+      freezeIndicator.addEventListener("click", () => {
+        if (isFrozen) {
+          isFrozen = false;
+          freezeToggle.checked = false;
+          freezeIndicator.classList.remove("active");
         }
       });
 
