@@ -694,34 +694,30 @@
       /* ========== Freeze Indicator ========== */
       #freezeIndicator {
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.9);
-        padding: 20px 40px;
+        top: 20px;
+        right: 76px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: var(--panel-bg);
-        color: var(--accent);
         border: 1px solid var(--accent-dim);
-        border-radius: 16px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 20px;
-        font-weight: 600;
-        letter-spacing: 4px;
+        border-radius: 10px;
+        font-size: 18px;
         pointer-events: none;
         opacity: 0;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 150;
-        box-shadow:
-          0 0 60px var(--panel-glow),
-          0 8px 32px rgba(0, 0, 0, 0.5),
-          inset 0 0 30px var(--panel-glow);
+        transform: scale(0.8);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 99;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        text-shadow: 0 0 20px var(--accent-glow);
       }
 
       #freezeIndicator.active {
         opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+        transform: scale(1);
       }
 
       /* ========== Modifier Indicators ========== */
@@ -1573,7 +1569,7 @@
       <div id="perpetualIndicator" class="modifier">∞ PERPETUAL</div>
     </div>
 
-    <div id="freezeIndicator">❄ FROZEN</div>
+    <div id="freezeIndicator">❄</div>
     <div id="paintIndicator"><span class="color-preview" id="paintColorPreview"></span> PAINT <span class="exit-x">✕</span></div>
     <div id="lockIndicator">🔒 LOCK <span class="exit-x">✕</span></div>
 
@@ -4657,10 +4653,6 @@
               : "rgba(0,0,0,0.8)";
           el.style.color = theme.ui === "#ffffff" ? "#000" : "#fff";
         });
-
-        freezeIndicator.style.background =
-          theme.ui === "#ffffff" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)";
-        freezeIndicator.style.color = theme.ui === "#ffffff" ? "#000" : "#fff";
 
         // Update help button
         const helpBtn = document.getElementById("helpBtn");
