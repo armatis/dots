@@ -3630,7 +3630,8 @@
           const progress = Math.min(elapsed / SIZE_ANIMATION_DURATION, 1);
           const eased = easeOutBack(progress);
 
-          dot.radius = anim.startRadius + (anim.targetRadius - anim.startRadius) * eased;
+          // Clamp radius to prevent negative values from easing overshoot
+          dot.radius = Math.max(0.1, anim.startRadius + (anim.targetRadius - anim.startRadius) * eased);
           dot.x = anim.startX + (anim.targetX - anim.startX) * eased;
           dot.y = anim.startY + (anim.targetY - anim.startY) * eased;
 
