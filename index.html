@@ -22,26 +22,24 @@
         height: 100vh;
       }
 
-      svg {
+      #gameCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
         display: block;
-        cursor: crosshair;
+        cursor: pointer;
         touch-action: none;
       }
 
-      circle {
+      #gameCanvas.dragging {
+        cursor: grabbing;
+      }
+
+      #gameCanvas.hovering-dot {
         cursor: grab;
-        transition: r 0.15s ease-out;
       }
 
-      circle:active {
-        cursor: grabbing;
-      }
-
-      svg.dragging {
-        cursor: grabbing;
-      }
-
-      svg.dragging circle {
+      #gameCanvas.dragging.hovering-dot {
         cursor: grabbing;
       }
 
@@ -147,6 +145,142 @@
         display: none; /* Chrome/Safari */
       }
 
+      /* Panel Tabs */
+      .panel-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        padding: 4px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+      }
+
+      .panel-tab {
+        flex: 1;
+        padding: 10px 16px;
+        background: transparent;
+        color: var(--text-secondary);
+        border: none;
+        border-radius: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .panel-tab:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .panel-tab.active {
+        background: rgba(130, 204, 221, 0.15);
+        color: var(--accent);
+      }
+
+      .panel-content {
+        display: none;
+      }
+
+      .panel-content.active {
+        display: block;
+      }
+
+      /* Games Tab Content */
+      .game-mode-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .game-mode-btn {
+        width: 100%;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-secondary);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .game-mode-btn:hover {
+        background: rgba(130, 204, 221, 0.1);
+        border-color: var(--accent-dim);
+        color: var(--text-primary);
+      }
+
+      .game-mode-btn.active {
+        background: rgba(130, 204, 221, 0.2);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .game-mode-btn .mode-icon {
+        font-size: 16px;
+      }
+
+      .game-stats {
+        padding: 16px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        margin-top: 12px;
+      }
+
+      .game-stats-header {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-label);
+        margin-bottom: 8px;
+      }
+
+      .game-stats-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .game-stats-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+
+      .game-action-btn {
+        width: 100%;
+        margin-top: 12px;
+        padding: 12px 16px;
+        background: rgba(130, 204, 221, 0.15);
+        color: var(--accent);
+        border: 1px solid var(--accent-dim);
+        border-radius: 10px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .game-action-btn:hover {
+        background: rgba(130, 204, 221, 0.25);
+        border-color: var(--accent);
+      }
+
       .control-section {
         margin-bottom: 20px;
         padding-bottom: 20px;
@@ -215,6 +349,8 @@
         font-size: 13px;
         font-weight: 400;
         letter-spacing: 0.2px;
+        min-width: 70px;
+        flex-shrink: 0;
       }
 
       /* Custom Range Slider */
@@ -504,7 +640,7 @@
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1.5px;
-        pointer-events: auto;
+        pointer-events: none;
         cursor: pointer;
         opacity: 0;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -521,7 +657,13 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      #lockIndicator:hover {
+      #lockIndicator.active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      #lockIndicator.active:hover {
         background: rgba(12, 28, 44, 0.95);
         border-color: #ffc107;
         box-shadow:
@@ -529,13 +671,8 @@
           0 4px 24px rgba(0, 0, 0, 0.5);
       }
 
-      #lockIndicator:active {
+      #lockIndicator.active:active {
         transform: translateY(2px);
-      }
-
-      #lockIndicator.active {
-        opacity: 1;
-        transform: translateY(0);
       }
 
       #lockIndicator.active:active {
@@ -563,7 +700,7 @@
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1.5px;
-        pointer-events: auto;
+        pointer-events: none;
         cursor: pointer;
         opacity: 0;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -580,21 +717,18 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      #paintIndicator:hover {
+      #paintIndicator.active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      #paintIndicator.active:hover {
         background: rgba(12, 28, 44, 0.95);
         border-color: var(--accent);
         box-shadow:
           0 0 50px var(--panel-glow),
           0 4px 24px rgba(0, 0, 0, 0.5);
-      }
-
-      #paintIndicator:active {
-        transform: translateY(2px);
-      }
-
-      #paintIndicator.active {
-        opacity: 1;
-        transform: translateY(0);
       }
 
       #paintIndicator.active:active {
@@ -698,34 +832,57 @@
       /* ========== Freeze Indicator ========== */
       #freezeIndicator {
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.9);
-        padding: 20px 40px;
+        bottom: 70px;
+        right: 24px;
+        transform: translateY(20px);
+        padding: 12px 18px;
         background: var(--panel-bg);
-        color: var(--accent);
-        border: 1px solid var(--accent-dim);
-        border-radius: 16px;
+        color: #4ecdc4;
+        border: 1px solid rgba(78, 205, 196, 0.5);
+        border-radius: 12px;
         font-family: 'JetBrains Mono', monospace;
-        font-size: 20px;
+        font-size: 11px;
         font-weight: 600;
-        letter-spacing: 4px;
+        letter-spacing: 1.5px;
         pointer-events: none;
+        cursor: pointer;
         opacity: 0;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: 150;
         box-shadow:
-          0 0 60px var(--panel-glow),
-          0 8px 32px rgba(0, 0, 0, 0.5),
-          inset 0 0 30px var(--panel-glow);
+          0 0 40px rgba(78, 205, 196, 0.15),
+          0 4px 20px rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        text-shadow: 0 0 20px var(--accent-glow);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
       }
 
       #freezeIndicator.active {
         opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      #freezeIndicator.active:hover {
+        background: rgba(12, 28, 44, 0.95);
+        border-color: #4ecdc4;
+        box-shadow:
+          0 0 50px rgba(78, 205, 196, 0.25),
+          0 4px 24px rgba(0, 0, 0, 0.5);
+      }
+
+      #freezeIndicator.active:active {
+        transform: translateY(2px);
+      }
+
+      #freezeIndicator .exit-x {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-left: 6px;
       }
 
       /* ========== Modifier Indicators ========== */
@@ -1083,371 +1240,10 @@
         box-shadow: 0 0 20px var(--chain-bg);
       }
 
-      /* ========== GAME SCOREBOARD - Vintage Sports Card ========== */
-
-      #gameBoard {
-        position: fixed;
-        bottom: 80px;
-        left: 24px;
-        z-index: 100;
-        font-family: 'Oswald', sans-serif;
-      }
-
-      /* Collapsed Toggle Button */
-      .scoreboard-toggle {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 10px 16px;
-        background: linear-gradient(180deg, #f5f0e6 0%, #ebe6d9 100%);
-        border: 3px solid #1a1a1a;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-        position: relative;
-      }
-
-      .scoreboard-toggle::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-        opacity: 0.03;
-        pointer-events: none;
-        border-radius: 2px;
-      }
-
-      .scoreboard-toggle:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-      }
-
-      .scoreboard-toggle:active {
-        transform: translateY(0);
-      }
-
-      .toggle-game {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 11px;
-        color: #1a1a1a;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-
-      .toggle-score {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 20px;
-        color: #c41e3a;
-        line-height: 1;
-      }
-
-      .toggle-arrow {
-        font-size: 8px;
-        color: #666;
-        transition: transform 0.3s ease;
-        margin-left: auto;
-      }
-
-      #gameBoard.open .toggle-arrow {
-        transform: rotate(180deg);
-      }
-
-      /* Expanded Card */
-      .scoreboard-card {
-        background: linear-gradient(180deg, #f5f0e6 0%, #ebe6d9 100%);
-        border: 3px solid #1a1a1a;
-        border-radius: 4px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        min-width: 220px;
-        position: relative;
-        overflow: hidden;
-        max-height: 0;
-        opacity: 0;
-        margin-top: 0;
-        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-
-      #gameBoard.open .scoreboard-card {
-        max-height: 450px;
-        opacity: 1;
-        margin-top: 10px;
-      }
-
-      .scoreboard-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-        opacity: 0.03;
-        pointer-events: none;
-      }
-
-      /* Game Tabs */
-      .game-tabs {
-        display: flex;
-        border-bottom: 2px solid #1a1a1a;
-        background: linear-gradient(180deg, #e8e3d6 0%, #ddd8c9 100%);
-      }
-
-      .game-tab {
-        flex: 1;
-        padding: 10px 8px;
-        background: transparent;
-        border: none;
-        border-right: 1px solid rgba(0, 0, 0, 0.15);
-        font-family: 'Oswald', sans-serif;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #666;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-      }
-
-      .game-tab:last-child {
-        border-right: none;
-      }
-
-      .game-tab:hover {
-        background: rgba(0, 0, 0, 0.05);
-        color: #333;
-      }
-
-      .game-tab.active {
-        background: #f5f0e6;
-        color: #c41e3a;
-        box-shadow: inset 0 -3px 0 #c41e3a;
-      }
-
-      .game-tab.active::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: #f5f0e6;
-      }
-
-      /* Scoreboard Content */
-      .scoreboard-content {
-        padding: 16px 20px 20px;
-        display: none;
-      }
-
-      .scoreboard-content.active {
-        display: block;
-      }
-
-      .score-header {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: #888;
-        margin-bottom: 4px;
-      }
-
-      .score-main {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 52px;
-        line-height: 1;
-        color: #1a1a1a;
-        letter-spacing: -2px;
-        margin-bottom: 8px;
-      }
-
-      .score-main.highlight {
-        color: #c41e3a;
-      }
-
-      .score-detail {
-        font-family: 'Oswald', sans-serif;
-        font-size: 13px;
-        font-weight: 500;
-        color: #666;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
-      }
-
-      .score-detail strong {
-        color: #1a1a1a;
-        font-weight: 600;
-      }
-
-      .score-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.15), transparent);
-        margin: 12px 0;
-      }
-
-      /* Action Buttons in Scoreboard */
-      .scoreboard-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 14px;
-      }
-
-      .score-btn {
-        flex: 1;
-        padding: 10px 12px;
-        background: #1a1a1a;
-        color: #f5f0e6;
-        border: none;
-        border-radius: 3px;
-        font-family: 'Oswald', sans-serif;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-
-      .score-btn:hover {
-        background: #c41e3a;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
-      }
-
-      .score-btn:active {
-        transform: translateY(0);
-      }
-
-      .score-btn.secondary {
-        background: transparent;
-        color: #1a1a1a;
-        border: 2px solid #1a1a1a;
-      }
-
-      .score-btn.secondary:hover {
-        background: #1a1a1a;
-        color: #f5f0e6;
-      }
-
-      /* Game-specific Scoreboard Styles */
-
-      /* Chain Reaction */
-      .chain-score-display {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-      }
-
-      .chain-score-display .score-main {
-        margin-bottom: 0;
-      }
-
-      .chain-score-display .score-of {
-        font-family: 'Oswald', sans-serif;
-        font-size: 18px;
-        color: #888;
-      }
-
-      .chain-pct {
-        display: inline-block;
-        padding: 4px 10px;
-        background: #c41e3a;
-        color: #fff;
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 14px;
-        border-radius: 2px;
-        margin-left: 8px;
-      }
-
-      /* Golf */
-      .golf-hole-display {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-
-      .golf-hole-num {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 14px;
-        color: #1a1a1a;
-      }
-
-      .golf-par-badge {
-        padding: 3px 10px;
-        background: #1a1a1a;
-        color: #f5f0e6;
-        font-family: 'Oswald', sans-serif;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        border-radius: 2px;
-      }
-
-      .golf-result {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 16px;
-        color: #c41e3a;
-        margin-top: 8px;
-      }
-
-      /* Pinball */
-      .pinball-bonus {
-        display: inline-block;
-        padding: 2px 8px;
-        background: #ffd700;
-        color: #1a1a1a;
-        font-family: 'Oswald', sans-serif;
-        font-size: 10px;
-        font-weight: 700;
-        border-radius: 2px;
-        margin-left: 8px;
-        animation: bonusPulse 1s ease-in-out infinite;
-      }
-
-      @keyframes bonusPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-      }
-
-      /* Cluster */
-      .cluster-timer-display {
-        font-family: 'Archivo Black', sans-serif;
-        font-size: 48px;
-        color: #1a1a1a;
-        letter-spacing: 2px;
-      }
-
-      .cluster-danger {
-        color: #c41e3a;
-        animation: dangerPulse 0.5s ease-in-out infinite;
-      }
-
-      @keyframes dangerPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-      }
-
-      /* Sandbox (no game selected) */
-      .sandbox-message {
-        font-family: 'Oswald', sans-serif;
-        font-size: 13px;
-        color: #888;
-        text-align: center;
-        padding: 10px 0;
-        font-style: italic;
-      }
-
-      /* Hide old HUDs - scoreboard handles all game display */
-      #chainScoreHUD,
-      #golfHUD,
-      #pinballHUD,
-      #clusterHUD {
-        display: none !important;
-      }
     </style>
   </head>
   <body>
-    <svg id="canvas"></svg>
+    <canvas id="gameCanvas"></canvas>
 
     <div id="chainScoreHUD" class="game-hud">
       <div class="hud-label">Chain</div>
@@ -1493,91 +1289,12 @@
       <span id="chainThresholdValue">8</span>
     </div>
 
-    <!-- Game Scoreboard -->
-    <div id="gameBoard">
-      <div class="scoreboard-toggle" id="scoreboardToggle">
-        <span class="toggle-game" id="toggleGameName">Free Play</span>
-        <span class="toggle-score" id="toggleScoreValue"></span>
-        <span class="toggle-arrow">▲</span>
-      </div>
-      <div class="scoreboard-card">
-        <div class="game-tabs">
-          <button class="game-tab active" data-game="sandbox">Free</button>
-          <button class="game-tab" data-game="chain">Chain</button>
-          <button class="game-tab" data-game="golf">Golf</button>
-          <button class="game-tab" data-game="pinball">Pinball</button>
-          <button class="game-tab" data-game="cluster">Cluster</button>
-        </div>
-
-        <!-- Sandbox (Free Play) -->
-        <div class="scoreboard-content active" data-game="sandbox">
-          <div class="sandbox-message">Double-click to create dots</div>
-          <div class="score-detail"><strong id="sandboxDotCount">0</strong> dots in play</div>
-        </div>
-
-        <!-- Chain Reaction -->
-        <div class="scoreboard-content" data-game="chain">
-          <div class="score-header">Chain Hits</div>
-          <div class="chain-score-display">
-            <div class="score-main" id="chainScoreMain">0</div>
-            <span class="score-of">/ <span id="chainTotalDots">0</span></span>
-          </div>
-          <div id="chainPctBadge" class="chain-pct" style="display: none;">0%</div>
-          <div class="score-divider"></div>
-          <div class="score-detail" id="chainStatusText">Place dots, then start</div>
-          <div class="scoreboard-actions">
-            <button class="score-btn" id="chainStartBtn2">Start Chain</button>
-            <button class="score-btn secondary" id="chainResetBtn2">Reset</button>
-          </div>
-        </div>
-
-        <!-- Golf -->
-        <div class="scoreboard-content" data-game="golf">
-          <div class="golf-hole-display">
-            <span class="golf-hole-num" id="golfHoleNum">Hole 1</span>
-            <span class="golf-par-badge" id="golfParBadge">PAR 3</span>
-          </div>
-          <div class="score-header">Strokes</div>
-          <div class="score-main" id="golfStrokesMain">0</div>
-          <div class="golf-result" id="golfResultText"></div>
-          <div class="score-divider"></div>
-          <div class="score-detail">Total: <strong id="golfTotalScore">E</strong></div>
-          <div class="scoreboard-actions">
-            <button class="score-btn" id="golfActionBtn">Start Hole</button>
-          </div>
-        </div>
-
-        <!-- Pinball -->
-        <div class="scoreboard-content" data-game="pinball">
-          <div class="score-header">Score</div>
-          <div class="score-main highlight" id="pinballScoreMain">0</div>
-          <div class="score-divider"></div>
-          <div class="score-detail">Best: <strong id="pinballBestScore">0</strong></div>
-          <div class="scoreboard-actions">
-            <button class="score-btn" id="pinballActionBtn">Start Round</button>
-          </div>
-        </div>
-
-        <!-- Cluster -->
-        <div class="scoreboard-content" data-game="cluster">
-          <div class="score-header">Survival Time</div>
-          <div class="cluster-timer-display" id="clusterTimerMain">0:00</div>
-          <div class="score-divider"></div>
-          <div class="score-detail">Best: <strong id="clusterBestTime">0:00</strong></div>
-          <div class="score-detail" id="clusterWarningText" style="color: #c41e3a; display: none;">CRITICAL MASS!</div>
-          <div class="scoreboard-actions">
-            <button class="score-btn" id="clusterActionBtn">Start</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div id="modifiers">
       <div id="boostIndicator" class="modifier">BOOST</div>
       <div id="perpetualIndicator" class="modifier">∞ PERPETUAL</div>
     </div>
 
-    <div id="freezeIndicator">❄ FROZEN</div>
+    <div id="freezeIndicator">❄ FROZEN <span class="exit-x">✕</span></div>
     <div id="paintIndicator"><span class="color-preview" id="paintColorPreview"></span> PAINT <span class="exit-x">✕</span></div>
     <div id="lockIndicator">🔒 LOCK <span class="exit-x">✕</span></div>
 
@@ -1617,6 +1334,9 @@
           <dt><kbd>L</kbd></dt>
           <dd>Toggle lock mode</dd>
 
+          <dt><kbd>O</kbd></dt>
+          <dd>Toggle orbit mode</dd>
+
           <dt><kbd>S</kbd></dt>
           <dd>Stop all dots</dd>
 
@@ -1627,7 +1347,7 @@
           <dd>Close panels</dd>
 
           <dt>Games</dt>
-          <dd>Select from scoreboard (bottom-left)</dd>
+          <dd>Open settings, go to Games tab</dd>
 
           <dt>Debug</dt>
           <dd>Click ⚙ for physics settings</dd>
@@ -1639,110 +1359,213 @@
     <div id="controls">
       <button id="controlsToggle">⚙</button>
       <div id="controlsPanel">
-        <div class="control-section">
-          <h3>Creation</h3>
-          <div class="control-row">
-            <label for="countSlider">Dots per click</label>
-            <input type="range" id="countSlider" min="1" max="12" value="1" />
-            <span class="value" id="countValue">1</span>
-          </div>
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-tab="settings">Settings</button>
+          <button class="panel-tab" data-tab="games">Games</button>
         </div>
 
-        <div class="control-section">
-          <h3>Paint</h3>
-          <div class="paint-palette">
-            <div class="paint-swatch reset" data-color="reset" title="Reset to theme"></div>
-            <div class="paint-swatch" data-color="#ff6b6b" style="background: #ff6b6b" title="Red"></div>
-            <div class="paint-swatch" data-color="#ffa94d" style="background: #ffa94d" title="Orange"></div>
-            <div class="paint-swatch" data-color="#ffd43b" style="background: #ffd43b" title="Yellow"></div>
-            <div class="paint-swatch" data-color="#69db7c" style="background: #69db7c" title="Green"></div>
-            <div class="paint-swatch" data-color="#4dabf7" style="background: #4dabf7" title="Blue"></div>
-            <div class="paint-swatch" data-color="#da77f2" style="background: #da77f2" title="Purple"></div>
-            <div class="paint-swatch" data-color="#ffffff" style="background: #ffffff" title="White"></div>
-            <div class="paint-swatch" data-color="#1a1a2e" style="background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2)" title="Black"></div>
+        <!-- Settings Tab -->
+        <div class="panel-content active" data-tab="settings">
+          <div class="control-section">
+            <h3>Creation</h3>
+            <div class="control-row">
+              <label for="countSlider">Dots per click</label>
+              <input type="range" id="countSlider" min="1" max="12" value="1" />
+              <span class="value" id="countValue">1</span>
+            </div>
           </div>
-          <button class="paint-mode-toggle" id="paintModeToggle">
-            <span class="status-dot"></span>
-            Paint Mode <span class="kbd-hint">(P)</span>
-          </button>
-          <button class="lock-mode-toggle" id="lockModeToggle">
-            <span class="status-dot"></span>
-            Lock Mode <span class="kbd-hint">(L)</span>
-          </button>
-        </div>
 
-        <div class="control-section">
-          <h3>Modifiers</h3>
-          <div class="modifier-toggles">
-            <button class="toggle-btn" id="boostToggle">
-              Boost <span class="kbd-hint">(A)</span>
+          <div class="control-section">
+            <h3>Paint</h3>
+            <div class="paint-palette">
+              <div class="paint-swatch reset" data-color="reset" title="Reset to theme"></div>
+              <div class="paint-swatch" data-color="#ff6b6b" style="background: #ff6b6b" title="Red"></div>
+              <div class="paint-swatch" data-color="#ffa94d" style="background: #ffa94d" title="Orange"></div>
+              <div class="paint-swatch" data-color="#ffd43b" style="background: #ffd43b" title="Yellow"></div>
+              <div class="paint-swatch" data-color="#69db7c" style="background: #69db7c" title="Green"></div>
+              <div class="paint-swatch" data-color="#4dabf7" style="background: #4dabf7" title="Blue"></div>
+              <div class="paint-swatch" data-color="#da77f2" style="background: #da77f2" title="Purple"></div>
+              <div class="paint-swatch" data-color="#ffffff" style="background: #ffffff" title="White"></div>
+              <div class="paint-swatch" data-color="#1a1a2e" style="background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2)" title="Black"></div>
+            </div>
+            <button class="paint-mode-toggle" id="paintModeToggle">
+              <span class="status-dot"></span>
+              Paint Mode <span class="kbd-hint">(P)</span>
             </button>
-            <button class="toggle-btn" id="perpetualToggle">
-              Perpetual <span class="kbd-hint">(C)</span>
+            <button class="lock-mode-toggle" id="lockModeToggle">
+              <span class="status-dot"></span>
+              Lock Mode <span class="kbd-hint">(L)</span>
             </button>
           </div>
+
+          <div class="control-section">
+            <h3>Modifiers</h3>
+            <div class="modifier-toggles">
+              <button class="toggle-btn" id="boostToggle">
+                Boost <span class="kbd-hint">(A)</span>
+              </button>
+              <button class="toggle-btn" id="perpetualToggle">
+                Perpetual <span class="kbd-hint">(C)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>Physics</h3>
+            <div class="control-row">
+              <label for="frictionSlider">Friction</label>
+              <input
+                type="range"
+                id="frictionSlider"
+                min="0"
+                max="10"
+                value="2"
+                step="0.5"
+              />
+              <span class="value" id="frictionValue">2</span>
+            </div>
+            <div class="control-row">
+              <label for="bounceSlider">Bounce</label>
+              <input
+                type="range"
+                id="bounceSlider"
+                min="0"
+                max="100"
+                value="85"
+              />
+              <span class="value" id="bounceValue">85</span>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>Mode</h3>
+            <div class="control-row">
+              <label for="freezeToggle">Freeze</label>
+              <input type="checkbox" id="freezeToggle" />
+            </div>
+            <div class="control-row">
+              <label for="orbitToggle">Orbit <span class="kbd-hint">(O)</span></label>
+              <input type="checkbox" id="orbitToggle" />
+            </div>
+            <div class="control-row" id="orbitStrengthRow" style="display: none;">
+              <label for="orbitStrength">Pull</label>
+              <input
+                type="range"
+                id="orbitStrength"
+                min="1"
+                max="100"
+                value="50"
+              />
+              <span class="value" id="orbitStrengthValue">50</span>
+            </div>
+            <div class="orbit-hint" id="orbitHint" style="display: none; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+              Click a dot to make it the attractor
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3>Display</h3>
+            <div class="control-row">
+              <label for="gridToggle">Show Grid</label>
+              <input type="checkbox" id="gridToggle" />
+            </div>
+            <div class="control-row">
+              <label for="themeSelect">Theme</label>
+              <select id="themeSelect">
+                <option value="orange">Orange</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="ocean" selected>Ocean</option>
+                <option value="forest">Forest</option>
+                <option value="sunset">Sunset</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control-section" style="border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+            <h3>Actions</h3>
+            <button class="action-btn" id="stopAllBtn">Stop All Dots</button>
+            <button class="action-btn" id="saveBtn">Save</button>
+            <button class="action-btn" id="loadBtn">Load</button>
+            <button class="action-btn danger" id="clearBtn">Clear All</button>
+          </div>
         </div>
 
-        <div class="control-section">
-          <h3>Physics</h3>
-          <div class="control-row">
-            <label for="frictionSlider">Friction</label>
-            <input
-              type="range"
-              id="frictionSlider"
-              min="90"
-              max="100"
-              value="98"
-              step="0.5"
-            />
-            <span class="value" id="frictionValue">98</span>
+        <!-- Games Tab -->
+        <div class="panel-content" data-tab="games">
+          <div class="game-mode-list">
+            <button class="game-mode-btn active" data-game="sandbox">
+              <span class="mode-icon">✦</span> Free Play
+            </button>
+            <button class="game-mode-btn" data-game="chain">
+              <span class="mode-icon">⚡</span> Chain Reaction
+            </button>
+            <button class="game-mode-btn" data-game="golf">
+              <span class="mode-icon">⛳</span> Golf
+            </button>
+            <button class="game-mode-btn" data-game="pinball">
+              <span class="mode-icon">🎯</span> Pinball
+            </button>
+            <button class="game-mode-btn" data-game="cluster">
+              <span class="mode-icon">⬡</span> Cluster
+            </button>
           </div>
-          <div class="control-row">
-            <label for="bounceSlider">Bounciness</label>
-            <input
-              type="range"
-              id="bounceSlider"
-              min="0"
-              max="100"
-              value="85"
-            />
-            <span class="value" id="bounceValue">85</span>
-          </div>
-        </div>
 
-        <div class="control-section">
-          <h3>Mode</h3>
-          <div class="control-row">
-            <label for="freezeToggle">Freeze</label>
-            <input type="checkbox" id="freezeToggle" />
-          </div>
-        </div>
+          <!-- Game Stats Area -->
+          <div id="gameStatsArea">
+            <!-- Sandbox -->
+            <div class="game-stats" data-game="sandbox">
+              <div class="game-stats-header">Dots in Play</div>
+              <div class="game-stats-value" id="statsDotCount">0</div>
+              <div class="game-stats-sub">Double-click to create</div>
+            </div>
 
-        <div class="control-section">
-          <h3>Display</h3>
-          <div class="control-row">
-            <label for="gridToggle">Show Grid</label>
-            <input type="checkbox" id="gridToggle" />
-          </div>
-          <div class="control-row">
-            <label for="themeSelect">Theme</label>
-            <select id="themeSelect">
-              <option value="orange">Orange</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="ocean" selected>Ocean</option>
-              <option value="forest">Forest</option>
-              <option value="sunset">Sunset</option>
-            </select>
-          </div>
-        </div>
+            <!-- Chain Reaction -->
+            <div class="game-stats" data-game="chain" style="display: none;">
+              <div class="game-stats-header">Chain Hits</div>
+              <div class="game-stats-value"><span id="statsChainScore">0</span> <span style="font-size: 14px; opacity: 0.5;">/ <span id="statsChainTotal">0</span></span></div>
+              <div class="game-stats-sub" id="statsChainStatus">Place dots, then start</div>
+              <div style="margin: 12px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                  <label style="font-size: 11px; color: var(--text-secondary);">Sensitivity</label>
+                  <input type="range" id="chainSensitivity" min="1" max="20" value="8" style="flex: 1; max-width: 100px;" />
+                  <span id="chainSensitivityValue" style="font-size: 11px; color: var(--accent); min-width: 20px; text-align: right;">8</span>
+                </div>
+                <div style="font-size: 10px; color: var(--text-secondary); margin-top: 6px; opacity: 0.7;">Lower = easier to trigger chain</div>
+              </div>
+              <button class="game-action-btn" id="chainStartBtn3">Start Chain</button>
+              <button class="game-action-btn" id="chainResetBtn3" style="margin-top: 8px; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); color: var(--text-secondary);">Reset</button>
+            </div>
 
-        <div class="control-section">
-          <h3>Actions</h3>
-          <button class="action-btn" id="stopAllBtn">Stop All Dots</button>
-          <button class="action-btn" id="saveBtn">Save</button>
-          <button class="action-btn" id="loadBtn">Load</button>
-          <button class="action-btn danger" id="clearBtn">Clear All</button>
+            <!-- Golf -->
+            <div class="game-stats" data-game="golf" style="display: none;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="game-stats-header" style="margin-bottom: 0;" id="statsGolfHole">Hole 1</span>
+                <span style="font-size: 11px; color: var(--accent); font-weight: 600;" id="statsGolfPar">PAR 3</span>
+              </div>
+              <div class="game-stats-value" id="statsGolfStrokes">0</div>
+              <div class="game-stats-sub" id="statsGolfResult"></div>
+              <div class="game-stats-sub">Total: <strong id="statsGolfTotal">E</strong></div>
+              <button class="game-action-btn" id="golfActionBtn2">Start Hole</button>
+            </div>
+
+            <!-- Pinball -->
+            <div class="game-stats" data-game="pinball" style="display: none;">
+              <div class="game-stats-header">Score</div>
+              <div class="game-stats-value" id="statsPinballScore">0</div>
+              <div class="game-stats-sub">Best: <strong id="statsPinballBest">0</strong></div>
+              <button class="game-action-btn" id="pinballActionBtn2">Start Round</button>
+            </div>
+
+            <!-- Cluster -->
+            <div class="game-stats" data-game="cluster" style="display: none;">
+              <div class="game-stats-header">Survival Time</div>
+              <div class="game-stats-value" id="statsClusterTime">0:00</div>
+              <div class="game-stats-sub">Best: <strong id="statsClusterBest">0:00</strong></div>
+              <div class="game-stats-sub" id="statsClusterWarning" style="color: #ff6b6b; display: none;">CRITICAL MASS!</div>
+              <button class="game-action-btn" id="clusterActionBtn2">Start</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1821,6 +1644,14 @@
 
       // Lock mode state
       let lockMode = false;
+
+      // Orbit mode state
+      let orbitMode = false;
+      let orbitSunId = null; // The central attractor dot
+      const orbitingDots = new Set(); // Track which dots are orbiting
+      const MAX_ORBITERS = 10;
+      const ORBIT_GRAVITY = 0.08; // Gravitational pull strength
+      const ORBIT_SUN_RADIUS = 40; // Size of the sun
 
       // Color themes
       const themes = {
@@ -1926,6 +1757,7 @@
       let golfHoleNumber = 1;
       let golfTotalScore = 0;
       let golfHoleComplete = false;
+      let golfBallThrown = false; // Track if ball was thrown (vs dragged)
 
       // Pinball game state
       let pinballMode = false;
@@ -1964,72 +1796,384 @@
       }
 
       // ========== SETUP SVG ==========
-      const svg = d3
-        .select("#canvas")
-        .attr("width", window.innerWidth)
-        .attr("height", window.innerHeight);
+      // ========== CANVAS SETUP ==========
+      const gameCanvas = document.getElementById("gameCanvas");
+      const ctx = gameCanvas.getContext("2d");
+      gameCanvas.width = window.innerWidth;
+      gameCanvas.height = window.innerHeight;
 
-      const background = svg
-        .append("rect")
-        .attr("width", window.innerWidth)
-        .attr("height", window.innerHeight)
-        .attr("fill", "#0a3d62");
-
-      // Grid group (hidden by default)
-      const gridGroup = svg
-        .append("g")
-        .attr("class", "grid")
-        .style("display", "none");
-
-      function drawGrid() {
-        gridGroup.selectAll("*").remove();
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        for (let x = 0; x <= width; x += GRID_SIZE) {
-          gridGroup
-            .append("line")
-            .attr("x1", x)
-            .attr("y1", 0)
-            .attr("x2", x)
-            .attr("y2", height)
-            .attr("stroke", "rgba(0,0,0,0.2)")
-            .attr("stroke-width", 0.5);
+      // ========== HIT DETECTION ==========
+      function findDotAtPoint(x, y, dotArray = dots) {
+        // Search in reverse order so topmost dots are found first
+        for (let i = dotArray.length - 1; i >= 0; i--) {
+          const dot = dotArray[i];
+          const dx = x - dot.x;
+          const dy = y - dot.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= dot.radius) {
+            return dot;
+          }
         }
-        for (let y = 0; y <= height; y += GRID_SIZE) {
-          gridGroup
-            .append("line")
-            .attr("x1", 0)
-            .attr("y1", y)
-            .attr("x2", width)
-            .attr("y2", y)
-            .attr("stroke", "rgba(0,0,0,0.2)")
-            .attr("stroke-width", 0.5);
-        }
+        return null;
       }
-      drawGrid();
 
-      // Golf target group (behind everything)
-      const golfTargetGroup = svg.append("g").attr("class", "golf-target");
+      function findClusterDotAtPoint(x, y) {
+        return findDotAtPoint(x, y, clusterDots);
+      }
 
-      // Pinball bumper group
-      const pinballBumperGroup = svg
-        .append("g")
-        .attr("class", "pinball-bumpers");
-
-      // Cluster dots group
-      const clusterDotsGroup = svg.append("g").attr("class", "cluster-dots");
-
-
-      const dotsGroup = svg.append("g");
+      // Grid visibility state
+      let showGrid = false;
 
       window.addEventListener("resize", () => {
-        svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
-        background
-          .attr("width", window.innerWidth)
-          .attr("height", window.innerHeight);
-        drawGrid();
+        gameCanvas.width = window.innerWidth;
+        gameCanvas.height = window.innerHeight;
+        renderCanvas();
       });
+
+      // ========== CANVAS EVENT HANDLERS ==========
+      function getCanvasCoords(event) {
+        const rect = gameCanvas.getBoundingClientRect();
+        if (event.touches) {
+          return {
+            x: event.touches[0].clientX - rect.left,
+            y: event.touches[0].clientY - rect.top
+          };
+        }
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      // Track hovered dot for cursor changes
+      gameCanvas.addEventListener("mousemove", function(event) {
+        const coords = getCanvasCoords(event);
+
+        // Handle cluster drag
+        if (clusterDragDotId !== null) {
+          const dx = coords.x - clusterDragStartPos.x;
+          const dy = coords.y - clusterDragStartPos.y;
+          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
+          if (dot) {
+            const newX = clusterDragOriginalPos.x + dx;
+            const newY = clusterDragOriginalPos.y + dy;
+            if (clusterDragLastPos) {
+              clusterDragVelocity.vx = (newX - clusterDragLastPos.x) * 0.5 + clusterDragVelocity.vx * 0.5;
+              clusterDragVelocity.vy = (newY - clusterDragLastPos.y) * 0.5 + clusterDragVelocity.vy * 0.5;
+            }
+            clusterDragLastPos = { x: newX, y: newY };
+            dot.x = Math.max(dot.radius, Math.min(window.innerWidth - dot.radius, newX));
+            dot.y = Math.max(dot.radius, Math.min(window.innerHeight - dot.radius, newY));
+          }
+          return;
+        }
+
+        // Handle regular dot drag
+        if (dragDotId !== null) {
+          const dx = coords.x - dragStartPos.x;
+          const dy = coords.y - dragStartPos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (!isDragging && distance > DRAG_THRESHOLD) {
+            isDragging = true;
+            clearHoldTimer();
+            gameCanvas.classList.add("dragging");
+            startPhysicsLoop();
+          }
+
+          if (isDragging) {
+            dragTargetPos = {
+              x: dragOriginalPos.x + dx,
+              y: dragOriginalPos.y + dy,
+            };
+          }
+          return;
+        }
+
+        // Update cursor based on hover
+        const dot = findDotAtPoint(coords.x, coords.y);
+        const clusterDot = clusterMode ? findClusterDotAtPoint(coords.x, coords.y) : null;
+        if (dot || (clusterDot && clusterDot.isBlack)) {
+          gameCanvas.classList.add("hovering-dot");
+        } else {
+          gameCanvas.classList.remove("hovering-dot");
+        }
+      });
+
+      gameCanvas.addEventListener("mousedown", function(event) {
+        const coords = getCanvasCoords(event);
+
+        // Check cluster dots first (in cluster mode)
+        if (clusterMode) {
+          const clusterDot = findClusterDotAtPoint(coords.x, coords.y);
+          if (clusterDot && clusterDot.isBlack) {
+            clusterDragDotId = clusterDot.id;
+            clusterDragStartPos = { x: coords.x, y: coords.y };
+            clusterDragOriginalPos = { x: clusterDot.x, y: clusterDot.y };
+            gameCanvas.classList.add("dragging");
+            return;
+          }
+        }
+
+        // Check regular dots
+        const dot = findDotAtPoint(coords.x, coords.y);
+        if (dot) {
+          handleDotMouseDown(dot, coords.x, coords.y);
+        }
+      });
+
+      gameCanvas.addEventListener("mouseup", function(event) {
+        // Always clear hold timer on release to prevent orphaned shrink timers
+        clearHoldTimer();
+
+        if (clusterDragDotId !== null) {
+          finalizeClusterDrag();
+          return;
+        }
+        finalizeDrag();
+        gameCanvas.classList.remove("dragging");
+      });
+
+      gameCanvas.addEventListener("mouseleave", function(event) {
+        if (!isDragging) {
+          clearHoldTimer();
+        }
+        gameCanvas.classList.remove("hovering-dot");
+      });
+
+      gameCanvas.addEventListener("dblclick", function(event) {
+        event.preventDefault();
+        const coords = getCanvasCoords(event);
+        const dot = findDotAtPoint(coords.x, coords.y);
+        if (dot) {
+          handleDotDoubleClick(dot);
+        } else {
+          createDot(coords.x, coords.y);
+        }
+      });
+
+      // Touch events
+      gameCanvas.addEventListener("touchstart", function(event) {
+        event.preventDefault();
+        const coords = getCanvasCoords(event);
+
+        // Check cluster dots first
+        if (clusterMode) {
+          const clusterDot = findClusterDotAtPoint(coords.x, coords.y);
+          if (clusterDot && clusterDot.isBlack) {
+            clusterDragDotId = clusterDot.id;
+            clusterDragStartPos = { x: coords.x, y: coords.y };
+            clusterDragOriginalPos = { x: clusterDot.x, y: clusterDot.y };
+            gameCanvas.classList.add("dragging");
+            return;
+          }
+        }
+
+        // Check regular dots
+        const dot = findDotAtPoint(coords.x, coords.y);
+        const touch = event.touches[0];
+        const now = Date.now();
+
+        // Check for double-tap
+        if (lastTapTime && now - lastTapTime < DOUBLE_TAP_THRESHOLD && lastTapPos) {
+          const dist = Math.sqrt((touch.clientX - lastTapPos.x) ** 2 + (touch.clientY - lastTapPos.y) ** 2);
+          if (dist < DOUBLE_TAP_DISTANCE) {
+            lastTapTime = 0;
+            lastTapPos = null;
+            if (dot) {
+              handleDotDoubleClick(dot);
+            } else {
+              createDot(coords.x, coords.y);
+            }
+            return;
+          }
+        }
+        lastTapTime = now;
+        lastTapPos = { x: touch.clientX, y: touch.clientY };
+
+        if (dot) {
+          handleDotTouchStart(dot, coords.x, coords.y);
+        }
+      }, { passive: false });
+
+      gameCanvas.addEventListener("touchmove", function(event) {
+        event.preventDefault();
+        const coords = getCanvasCoords(event);
+
+        if (clusterDragDotId !== null) {
+          const dx = coords.x - clusterDragStartPos.x;
+          const dy = coords.y - clusterDragStartPos.y;
+          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
+          if (dot) {
+            const newX = clusterDragOriginalPos.x + dx;
+            const newY = clusterDragOriginalPos.y + dy;
+            if (clusterDragLastPos) {
+              clusterDragVelocity.vx = (newX - clusterDragLastPos.x) * 0.5 + clusterDragVelocity.vx * 0.5;
+              clusterDragVelocity.vy = (newY - clusterDragLastPos.y) * 0.5 + clusterDragVelocity.vy * 0.5;
+            }
+            clusterDragLastPos = { x: newX, y: newY };
+            dot.x = Math.max(dot.radius, Math.min(window.innerWidth - dot.radius, newX));
+            dot.y = Math.max(dot.radius, Math.min(window.innerHeight - dot.radius, newY));
+          }
+          return;
+        }
+
+        if (dragDotId !== null) {
+          const dx = coords.x - dragStartPos.x;
+          const dy = coords.y - dragStartPos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (!isDragging && distance > DRAG_THRESHOLD) {
+            isDragging = true;
+            clearHoldTimer();
+            gameCanvas.classList.add("dragging");
+            startPhysicsLoop();
+          }
+
+          if (isDragging) {
+            dragTargetPos = {
+              x: dragOriginalPos.x + dx,
+              y: dragOriginalPos.y + dy,
+            };
+          }
+        }
+      }, { passive: false });
+
+      gameCanvas.addEventListener("touchend", function(event) {
+        // Always clear hold timer on release to prevent orphaned shrink timers
+        clearHoldTimer();
+
+        if (clusterDragDotId !== null) {
+          finalizeClusterDrag();
+          return;
+        }
+        finalizeDrag();
+        gameCanvas.classList.remove("dragging");
+      });
+
+      // ========== DOT INTERACTION HANDLERS ==========
+      function handleDotMouseDown(d, mx, my) {
+        // Handle paint mode
+        if (paintMode && selectedPaintColor) {
+          if (selectedPaintColor === "reset") {
+            delete d.color;
+          } else {
+            d.color = selectedPaintColor;
+          }
+          render();
+          return;
+        }
+
+        // Handle lock mode
+        if (lockMode) {
+          d.locked = !d.locked;
+          if (d.locked) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            boostedDots.delete(d.id);
+          }
+          render();
+          return;
+        }
+
+        // Handle orbit mode - click to set attractor
+        if (orbitMode && orbitSunId === null) {
+          setOrbitAttractor(d);
+          return;
+        }
+
+        // Don't allow dragging locked dots
+        if (d.locked) return;
+
+        holdDotId = d.id;
+        dragStartPos = { x: mx, y: my };
+        dragOriginalPos = { x: d.x, y: d.y };
+        dragDotId = d.id;
+        isDragging = false;
+
+        if (!dotVelocities.has(d.id)) {
+          dotVelocities.set(d.id, { vx: 0, vy: 0 });
+        }
+
+        holdTimer = setTimeout(() => {
+          if (holdDotId === d.id && !isDragging) {
+            shrinkDot(d.id);
+          }
+          clearHoldTimer();
+        }, HOLD_DURATION);
+      }
+
+      function handleDotTouchStart(d, tx, ty) {
+        // Handle paint mode
+        if (paintMode && selectedPaintColor) {
+          if (selectedPaintColor === "reset") {
+            delete d.color;
+          } else {
+            d.color = selectedPaintColor;
+          }
+          render();
+          return;
+        }
+
+        // Handle lock mode
+        if (lockMode) {
+          d.locked = !d.locked;
+          if (d.locked) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            boostedDots.delete(d.id);
+          }
+          render();
+          return;
+        }
+
+        // Handle orbit mode
+        if (orbitMode && orbitSunId === null) {
+          setOrbitAttractor(d);
+          return;
+        }
+
+        if (d.locked) return;
+
+        holdDotId = d.id;
+        dragStartPos = { x: tx, y: ty };
+        dragOriginalPos = { x: d.x, y: d.y };
+        dragDotId = d.id;
+        isDragging = false;
+
+        if (!dotVelocities.has(d.id)) {
+          dotVelocities.set(d.id, { vx: 0, vy: 0 });
+        }
+
+        holdTimer = setTimeout(() => {
+          if (holdDotId === d.id && !isDragging) {
+            shrinkDot(d.id);
+          }
+          clearHoldTimer();
+        }, HOLD_DURATION);
+      }
+
+      function handleDotDoubleClick(d) {
+        clearHoldTimer();
+
+        if (dotVelocities.has(d.id)) {
+          const vel = dotVelocities.get(d.id);
+          const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
+          if (speed > MIN_VELOCITY) {
+            dotVelocities.delete(d.id);
+            noFrictionDots.delete(d.id);
+            const snapped = snapToGrid(d.x, d.y);
+            if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
+              d.x = snapped.x;
+              d.y = snapped.y;
+            }
+            render();
+            return;
+          }
+        }
+
+        growDot(d.id);
+      }
 
       // ========== UTILITY FUNCTIONS ==========
       const snapToGrid = (x, y) => ({
@@ -2048,43 +2192,32 @@
       };
 
       const findPlacementPosition = (clickX, clickY, newRadius) => {
-        if (dots.length === 0) {
-          return snapToGrid(clickX, clickY);
+        // First try: place exactly where clicked (with grid snap)
+        const snapped = snapToGrid(clickX, clickY);
+        if (!wouldOverlap(snapped.x, snapped.y, newRadius)) {
+          return snapped;
         }
 
-        let nearestDot = null;
-        let nearestDistance = Infinity;
-        for (const dot of dots) {
-          const dx = clickX - dot.x;
-          const dy = clickY - dot.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < nearestDistance) {
-            nearestDistance = dist;
-            nearestDot = dot;
+        // Second try: place at exact click position without snap
+        if (!wouldOverlap(clickX, clickY, newRadius)) {
+          return { x: clickX, y: clickY };
+        }
+
+        // Third try: find nearest non-overlapping position
+        // Search in expanding circles around click point
+        for (let radius = newRadius; radius < newRadius * 4; radius += newRadius / 2) {
+          for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+            const testX = clickX + Math.cos(angle) * radius;
+            const testY = clickY + Math.sin(angle) * radius;
+            const testSnapped = snapToGrid(testX, testY);
+            if (!wouldOverlap(testSnapped.x, testSnapped.y, newRadius)) {
+              return testSnapped;
+            }
           }
         }
 
-        const touchDistance =
-          nearestDot.radius + Math.max(newRadius, nearestDot.radius);
-
-        if (nearestDistance > touchDistance * 2) {
-          return snapToGrid(clickX, clickY);
-        }
-
-        const dx = clickX - nearestDot.x;
-        const dy = clickY - nearestDot.y;
-
-        if (nearestDistance === 0) {
-          return { x: nearestDot.x + touchDistance, y: nearestDot.y };
-        }
-
-        const nx = dx / nearestDistance;
-        const ny = dy / nearestDistance;
-
-        return snapToGrid(
-          nearestDot.x + nx * touchDistance,
-          nearestDot.y + ny * touchDistance,
-        );
+        // Fallback: just return the snapped position (creation will be blocked by wouldOverlap check)
+        return snapped;
       };
 
       // ========== UNIFIED COLLISION SOLVER ==========
@@ -2199,7 +2332,7 @@
 
       // ========== CHAIN REACTION GAME ==========
       function getChainThreshold() {
-        const slider = document.getElementById("chainThresholdSlider");
+        const slider = document.getElementById("chainSensitivity");
         return slider ? parseFloat(slider.value) : CHAIN_IMPACT_THRESHOLD;
       }
 
@@ -2320,6 +2453,7 @@
 
         golfStrokes = 0;
         golfHoleComplete = false;
+        golfBallThrown = false;
 
         renderGolfTarget();
         updateGolfHUD();
@@ -2354,19 +2488,20 @@
         golfHoleNumber = 1;
         golfTotalScore = 0;
         golfHoleComplete = false;
+        golfBallThrown = false;
 
         dots = [];
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
-        golfTargetGroup.selectAll("*").remove();
-
         render();
         updateGolfHUD();
       }
 
       function checkGolfWin() {
         if (!golfMode || !golfBallId || !golfTarget || golfHoleComplete) return;
+        // Ball must have been thrown (not just dragged into hole)
+        if (!golfBallThrown) return;
 
         const ball = dots.find((d) => d.id === golfBallId);
         if (!ball) return;
@@ -2385,37 +2520,8 @@
       }
 
       function renderGolfTarget() {
-        golfTargetGroup.selectAll("*").remove();
-        if (!golfTarget) return;
-
-        // Outer ring
-        golfTargetGroup
-          .append("circle")
-          .attr("cx", golfTarget.x)
-          .attr("cy", golfTarget.y)
-          .attr("r", golfTarget.radius)
-          .attr("fill", "rgba(255, 255, 255, 0.1)")
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 3)
-          .attr("stroke-dasharray", "10,5");
-
-        // Inner ring
-        golfTargetGroup
-          .append("circle")
-          .attr("cx", golfTarget.x)
-          .attr("cy", golfTarget.y)
-          .attr("r", golfTarget.radius * 0.5)
-          .attr("fill", "none")
-          .attr("stroke", "rgba(255,255,255,0.5)")
-          .attr("stroke-width", 2);
-
-        // Center dot
-        golfTargetGroup
-          .append("circle")
-          .attr("cx", golfTarget.x)
-          .attr("cy", golfTarget.y)
-          .attr("r", 5)
-          .attr("fill", "#fff");
+        // Golf target is now rendered on canvas in renderCanvas()
+        renderCanvas();
       }
 
       function updateGolfHUD() {
@@ -2507,8 +2613,6 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
-        pinballBumperGroup.selectAll("*").remove();
-
         render();
         updatePinballHUD();
       }
@@ -2558,45 +2662,8 @@
       }
 
       function renderBumpers() {
-        pinballBumperGroup.selectAll("*").remove();
-
-        for (const bumper of pinballBumpers) {
-          // Outer glow
-          pinballBumperGroup
-            .append("circle")
-            .attr("cx", bumper.x)
-            .attr("cy", bumper.y)
-            .attr("r", bumper.radius + 5)
-            .attr("fill", "none")
-            .attr(
-              "stroke",
-              bumper.type === "bonus"
-                ? "rgba(255, 215, 0, 0.5)"
-                : "rgba(255, 255, 255, 0.3)",
-            )
-            .attr("stroke-width", 3);
-
-          // Main bumper
-          pinballBumperGroup
-            .append("circle")
-            .attr("cx", bumper.x)
-            .attr("cy", bumper.y)
-            .attr("r", bumper.radius)
-            .attr("fill", bumper.type === "bonus" ? "#ffd700" : "#fff")
-            .attr("stroke", bumper.type === "bonus" ? "#b8860b" : "#ccc")
-            .attr("stroke-width", 2);
-
-          // Center point value
-          pinballBumperGroup
-            .append("text")
-            .attr("x", bumper.x)
-            .attr("y", bumper.y + 5)
-            .attr("text-anchor", "middle")
-            .attr("fill", bumper.type === "bonus" ? "#000" : "#333")
-            .attr("font-size", "12px")
-            .attr("font-weight", "bold")
-            .text(bumper.points);
-        }
+        // Bumpers are now rendered on canvas in renderCanvas()
+        renderCanvas();
       }
 
       function updatePinballHUD() {
@@ -2618,7 +2685,6 @@
         clusterNextGroupId = 1;
         clusterTimeElapsed = 0;
         clusterSpawnInterval = 2000;
-        clusterDotsGroup.selectAll("*").remove();
 
         clusterRoundActive = true;
 
@@ -2695,7 +2761,6 @@
         clusterTimeElapsed = 0;
         clusterSpawnInterval = 2000;
 
-        clusterDotsGroup.selectAll("*").remove();
         updateClusterHUD();
       }
 
@@ -2771,20 +2836,23 @@
           if (dot.id === clusterDragDotId) continue;
 
           if (!dot.isBlack) {
-            // Colored dots: Apply gravity toward same-colored dots
+            // Colored dots: Apply gentle gravity toward same-colored, same-sized dots
             for (const other of clusterDots) {
               if (
                 other.id === dot.id ||
                 other.isBlack ||
-                other.color !== dot.color
+                other.color !== dot.color ||
+                other.radius !== dot.radius
               )
                 continue;
 
               const dx = other.x - dot.x;
               const dy = other.y - dot.y;
               const dist = Math.sqrt(dx * dx + dy * dy);
+              const minDist = dot.radius + other.radius;
 
-              if (dist > 0 && dist < 300) {
+              // Only attract if not already touching
+              if (dist > minDist && dist < 300) {
                 const force = CLUSTER_GRAVITY / (dist * 0.1);
                 dot.vx += (dx / dist) * force;
                 dot.vy += (dy / dist) * force;
@@ -2827,7 +2895,10 @@
           }
         }
 
-        // Check for same-color clustering
+        // Resolve collisions between all dots (prevent overlap)
+        resolveClusterDotCollisions();
+
+        // Check for same-color clustering (merging 4+ dots)
         checkClusterCollisions();
 
         // Check for black dot attacks
@@ -2835,6 +2906,81 @@
 
         // Check lose condition
         checkClusterLoseCondition();
+      }
+
+      function resolveClusterDotCollisions() {
+        // Multiple iterations for stability
+        for (let iter = 0; iter < 3; iter++) {
+          for (let i = 0; i < clusterDots.length; i++) {
+            const a = clusterDots[i];
+
+            for (let j = i + 1; j < clusterDots.length; j++) {
+              const b = clusterDots[j];
+
+              const dx = b.x - a.x;
+              const dy = b.y - a.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const minDist = a.radius + b.radius;
+
+              if (dist < minDist && dist > 0) {
+                // Calculate overlap
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                // Mass based on radius squared
+                const massA = a.radius * a.radius;
+                const massB = b.radius * b.radius;
+                const totalMass = massA + massB;
+
+                // Separate dots (skip if being dragged)
+                const aIsDragged = a.id === clusterDragDotId;
+                const bIsDragged = b.id === clusterDragDotId;
+
+                if (!aIsDragged && !bIsDragged) {
+                  // Both can move
+                  const moveA = overlap * (massB / totalMass);
+                  const moveB = overlap * (massA / totalMass);
+                  a.x -= nx * moveA;
+                  a.y -= ny * moveA;
+                  b.x += nx * moveB;
+                  b.y += ny * moveB;
+                } else if (aIsDragged) {
+                  // Only b can move
+                  b.x += nx * overlap;
+                  b.y += ny * overlap;
+                } else {
+                  // Only a can move
+                  a.x -= nx * overlap;
+                  a.y -= ny * overlap;
+                }
+
+                // Apply impulse for bounce (except for same-color same-size dots that might merge)
+                const shouldBounce = a.isBlack || b.isBlack ||
+                                     a.color !== b.color ||
+                                     a.radius !== b.radius;
+
+                if (shouldBounce && !aIsDragged && !bIsDragged) {
+                  // Relative velocity
+                  const dvx = b.vx - a.vx;
+                  const dvy = b.vy - a.vy;
+                  const dvDotN = dvx * nx + dvy * ny;
+
+                  // Only resolve if dots are approaching
+                  if (dvDotN < 0) {
+                    const restitution = 0.6;
+                    const impulse = -(1 + restitution) * dvDotN / totalMass;
+
+                    a.vx -= impulse * massB * nx;
+                    a.vy -= impulse * massB * ny;
+                    b.vx += impulse * massA * nx;
+                    b.vy += impulse * massA * ny;
+                  }
+                }
+              }
+            }
+          }
+        }
       }
 
       function checkClusterCollisions() {
@@ -3025,88 +3171,8 @@
       }
 
       function renderClusterDots() {
-        const circles = clusterDotsGroup
-          .selectAll("circle")
-          .data(clusterDots, (d) => d.id);
-
-        circles.exit().remove();
-
-        const entered = circles
-          .enter()
-          .append("circle")
-          .attr("r", (d) => d.radius)
-          .attr("fill", (d) => d.color)
-          .attr("stroke", (d) => (d.isBlack ? "#000" : darkenColor(d.color)))
-          .attr("stroke-width", 2)
-          .attr("cursor", (d) => (d.isBlack ? "grab" : "default"))
-          .style("filter", (d) =>
-            !d.isBlack && d.radius > 15
-              ? "drop-shadow(0 0 8px " + d.color + ")"
-              : "none",
-          )
-          .on("mousedown", function (event, d) {
-            if (d.isBlack) {
-              event.stopPropagation();
-              clusterDragDotId = d.id;
-              const [mx, my] = d3.pointer(event, svg.node());
-              clusterDragStartPos = { x: mx, y: my };
-              clusterDragOriginalPos = { x: d.x, y: d.y };
-              svg.classed("dragging", true);
-            }
-          })
-          .on("touchstart", function (event, d) {
-            if (d.isBlack) {
-              event.preventDefault();
-              event.stopPropagation();
-              clusterDragDotId = d.id;
-              const touch = event.touches[0];
-              const rect = svg.node().getBoundingClientRect();
-              clusterDragStartPos = {
-                x: touch.clientX - rect.left,
-                y: touch.clientY - rect.top,
-              };
-              clusterDragOriginalPos = { x: d.x, y: d.y };
-              svg.classed("dragging", true);
-            }
-          });
-
-        entered
-          .merge(circles)
-          .attr("cx", (d) => d.x)
-          .attr("cy", (d) => d.y)
-          .attr("r", (d) => d.radius)
-          .attr("fill", (d) => d.color)
-          .attr("stroke", (d) => (d.isBlack ? "#000" : darkenColor(d.color)))
-          .style("filter", (d) =>
-            !d.isBlack && d.radius > 15
-              ? "drop-shadow(0 0 8px " + d.color + ")"
-              : "none",
-          );
-
-        // Show hit indicators on colored dots being attacked
-        const hitIndicators = clusterDotsGroup
-          .selectAll("text.hit-indicator")
-          .data(
-            clusterDots.filter((d) => !d.isBlack && d.hitsTaken > 0),
-            (d) => d.id,
-          );
-
-        hitIndicators.exit().remove();
-
-        hitIndicators
-          .enter()
-          .append("text")
-          .attr("class", "hit-indicator")
-          .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "middle")
-          .attr("fill", "#fff")
-          .attr("font-size", "12px")
-          .attr("font-weight", "bold")
-          .attr("pointer-events", "none")
-          .merge(hitIndicators)
-          .attr("x", (d) => d.x)
-          .attr("y", (d) => d.y)
-          .text((d) => d.hitsTaken);
+        // All rendering and hit detection is now handled by Canvas
+        renderCanvas();
       }
 
       function darkenColor(color) {
@@ -3149,37 +3215,134 @@
         bestLabel.textContent = "Best: " + formatClusterTime(clusterBest);
       }
 
+      // ========== CANVAS RENDER ==========
+      function renderCanvas() {
+        const theme = themes[currentTheme];
+        const width = gameCanvas.width;
+        const height = gameCanvas.height;
+
+        // Clear and draw background
+        ctx.fillStyle = theme.background;
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw grid if visible
+        if (showGrid) {
+          ctx.strokeStyle = "rgba(0,0,0,0.2)";
+          ctx.lineWidth = 0.5;
+          for (let x = 0; x <= width; x += GRID_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+          }
+          for (let y = 0; y <= height; y += GRID_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+          }
+        }
+
+        // Draw golf hole if in golf mode
+        if (golfMode && golfTarget) {
+          // Simple hole - dark circle with subtle border
+          ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(golfTarget.x, golfTarget.y, golfTarget.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Draw pinball bumpers
+        if (pinballMode) {
+          for (const bumper of pinballBumpers) {
+            const isBonus = bumper.type === "bonus";
+
+            // Outer glow
+            ctx.strokeStyle = isBonus ? "rgba(255, 215, 0, 0.5)" : "rgba(255, 255, 255, 0.3)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(bumper.x, bumper.y, bumper.radius + 5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Main bumper circle
+            ctx.fillStyle = isBonus ? "#ffd700" : "#fff";
+            ctx.strokeStyle = isBonus ? "#b8860b" : "#ccc";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(bumper.x, bumper.y, bumper.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Point value text
+            ctx.fillStyle = isBonus ? "#000" : "#333";
+            ctx.font = "bold 12px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(bumper.points.toString(), bumper.x, bumper.y);
+          }
+        }
+
+        // Draw cluster dots
+        if (clusterMode) {
+          for (const dot of clusterDots) {
+            // Draw glow effect for large colored dots
+            if (!dot.isBlack && dot.radius > 15) {
+              ctx.shadowColor = dot.color;
+              ctx.shadowBlur = 8;
+            }
+
+            ctx.fillStyle = dot.color;
+            ctx.strokeStyle = dot.isBlack ? "#000" : darkenColor(dot.color);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Reset shadow
+            ctx.shadowBlur = 0;
+
+            // Draw hit indicator for colored dots being attacked
+            if (!dot.isBlack && dot.hitsTaken > 0) {
+              ctx.fillStyle = "#fff";
+              ctx.font = "bold 12px 'JetBrains Mono', monospace";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(dot.hitsTaken.toString(), dot.x, dot.y);
+            }
+          }
+        }
+
+        // Draw main dots
+        for (const dot of dots) {
+          const fillColor = dot.color || theme.dotFill;
+          let strokeColor = theme.dotStroke;
+          let strokeWidth = STROKE_WIDTH;
+
+          if (dot.isSun) {
+            strokeColor = "#FF8C00";
+            strokeWidth = 4;
+          } else if (dot.locked) {
+            strokeColor = "#ffc107";
+            strokeWidth = 3;
+          }
+
+          ctx.fillStyle = fillColor;
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
       // ========== RENDER ==========
       function render() {
-        const circles = dotsGroup.selectAll("circle").data(dots, (d) => d.id);
-
-        circles.exit().remove();
-
-        const theme = themes[currentTheme];
-        circles
-          .enter()
-          .append("circle")
-          .attr("cx", (d) => d.x)
-          .attr("cy", (d) => d.y)
-          .attr("r", (d) => d.radius)
-          .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", (d) => d.locked ? "#ffc107" : theme.dotStroke)
-          .attr("stroke-width", (d) => d.locked ? 3 : STROKE_WIDTH)
-          .on("mousedown", onDotMouseDown)
-          .on("mouseup", onDotMouseUp)
-          .on("mouseleave", onDotMouseLeave)
-          .on("dblclick", onDotDoubleClick)
-          .on("touchstart", onDotTouchStart)
-          .on("touchend", onDotTouchEnd)
-          .on("touchmove", onDotTouchMove);
-
-        circles
-          .attr("cx", (d) => d.x)
-          .attr("cy", (d) => d.y)
-          .attr("fill", (d) => d.color || theme.dotFill)
-          .attr("stroke", (d) => d.locked ? "#ffc107" : theme.dotStroke)
-          .attr("stroke-width", (d) => d.locked ? 3 : STROKE_WIDTH)
-          .attr("r", (d) => d.radius);
+        renderCanvas();
       }
 
       // ========== DOT CREATION ==========
@@ -3195,12 +3358,19 @@
         if (count === 1) {
           const placement = findPlacementPosition(x, y, DEFAULT_RADIUS);
           if (!wouldOverlap(placement.x, placement.y, DEFAULT_RADIUS)) {
-            dots.push({
+            const newDot = {
               id: nextId++,
               x: placement.x,
               y: placement.y,
               radius: DEFAULT_RADIUS,
-            });
+            };
+            dots.push(newDot);
+
+            // If in orbit mode, add to orbiting dots so they start orbiting
+            if (orbitMode && orbitSunId !== null && orbitingDots.size < MAX_ORBITERS) {
+              dotVelocities.set(newDot.id, { vx: 0, vy: 0 });
+              orbitingDots.add(newDot.id);
+            }
           }
         } else {
           createDotCluster(x, y, count);
@@ -3229,6 +3399,12 @@
         };
         dots.push(centerDot);
 
+        // Add to orbiting dots if in orbit mode
+        if (orbitMode && orbitSunId !== null && orbitingDots.size < MAX_ORBITERS) {
+          dotVelocities.set(centerDot.id, { vx: 0, vy: 0 });
+          orbitingDots.add(centerDot.id);
+        }
+
         if (count === 1) return;
 
         let placed = 1;
@@ -3249,12 +3425,20 @@
             const snapped = snapToGrid(testX, testY);
 
             if (!wouldOverlap(snapped.x, snapped.y, DEFAULT_RADIUS)) {
-              dots.push({
+              const newDot = {
                 id: nextId++,
                 x: snapped.x,
                 y: snapped.y,
                 radius: DEFAULT_RADIUS,
-              });
+              };
+              dots.push(newDot);
+
+              // Add to orbiting dots if in orbit mode
+              if (orbitMode && orbitSunId !== null && orbitingDots.size < MAX_ORBITERS) {
+                dotVelocities.set(newDot.id, { vx: 0, vy: 0 });
+                orbitingDots.add(newDot.id);
+              }
+
               placed++;
             }
           }
@@ -3263,8 +3447,96 @@
         }
       }
 
-      // ========== GROW / SHRINK ==========
+      // ========== GROW / SHRINK WITH ANIMATION ==========
+      const SIZE_ANIMATION_DURATION = 150; // ms
+      const activeAnimations = new Map(); // dotId -> {startRadius, targetRadius, startTime, startX, startY, targetX, targetY}
+
+      function easeOutBack(t) {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+      }
+
+      function animateDotRadius(id, targetRadius, targetX = null, targetY = null) {
+        const dot = dots.find((d) => d.id === id);
+        if (!dot) return;
+
+        activeAnimations.set(id, {
+          startRadius: dot.radius,
+          targetRadius: targetRadius,
+          startTime: performance.now(),
+          startX: dot.x,
+          startY: dot.y,
+          targetX: targetX !== null ? targetX : dot.x,
+          targetY: targetY !== null ? targetY : dot.y
+        });
+
+        startAnimationLoop();
+      }
+
+      let animationLoopId = null;
+      function startAnimationLoop() {
+        if (animationLoopId) return;
+        animationLoopId = requestAnimationFrame(updateAnimations);
+      }
+
+      function updateAnimations(timestamp) {
+        let hasActiveAnimations = false;
+
+        for (const [id, anim] of activeAnimations) {
+          const dot = dots.find((d) => d.id === id);
+          if (!dot) {
+            activeAnimations.delete(id);
+            continue;
+          }
+
+          const elapsed = timestamp - anim.startTime;
+          const progress = Math.min(elapsed / SIZE_ANIMATION_DURATION, 1);
+          const eased = easeOutBack(progress);
+
+          // Clamp radius to prevent negative values from easing overshoot
+          dot.radius = Math.max(0.1, anim.startRadius + (anim.targetRadius - anim.startRadius) * eased);
+          dot.x = anim.startX + (anim.targetX - anim.startX) * eased;
+          dot.y = anim.startY + (anim.targetY - anim.startY) * eased;
+
+          if (progress >= 1) {
+            activeAnimations.delete(id);
+            if (anim.removeOnComplete) {
+              // Don't remove game mode balls
+              const isGameBall = (golfMode && id === golfBallId) ||
+                                 (pinballMode && id === pinballBallId);
+              if (!isGameBall) {
+                // Remove the dot completely
+                dots = dots.filter((d) => d.id !== id);
+                dotVelocities.delete(id);
+                noFrictionDots.delete(id);
+                boostedDots.delete(id);
+              }
+            } else {
+              dot.radius = anim.targetRadius;
+              dot.x = anim.targetX;
+              dot.y = anim.targetY;
+            }
+          } else {
+            hasActiveAnimations = true;
+          }
+        }
+
+        render();
+
+        if (hasActiveAnimations) {
+          animationLoopId = requestAnimationFrame(updateAnimations);
+        } else {
+          animationLoopId = null;
+        }
+      }
+
       function growDot(id) {
+        // Don't grow the golf ball during golf mode
+        if (golfMode && id === golfBallId) return;
+        // Don't grow the pinball ball during pinball mode
+        if (pinballMode && id === pinballBallId) return;
+
         const dot = dots.find((d) => d.id === id);
         if (!dot) return;
 
@@ -3272,8 +3544,7 @@
         const radiusIncrease = newRadius - dot.radius;
 
         if (!wouldOverlap(dot.x, dot.y, newRadius, id)) {
-          dot.radius = newRadius;
-          render();
+          animateDotRadius(id, newRadius);
           return;
         }
 
@@ -3309,27 +3580,38 @@
         const newY = dot.y + shiftY * radiusIncrease;
 
         if (!wouldOverlap(newX, newY, newRadius, id)) {
-          dot.x = newX;
-          dot.y = newY;
-          dot.radius = newRadius;
-          render();
+          animateDotRadius(id, newRadius, newX, newY);
         }
       }
 
       function shrinkDot(id) {
+        // Don't shrink the golf ball during golf mode
+        if (golfMode && id === golfBallId) return;
+        // Don't shrink the pinball ball during pinball mode
+        if (pinballMode && id === pinballBallId) return;
+
         const dot = dots.find((d) => d.id === id);
         if (!dot) return;
 
-        const newRadius = dot.radius / 2;
-        if (newRadius < MIN_RADIUS) {
-          dots = dots.filter((d) => d.id !== id);
-          dotVelocities.delete(id);
-          noFrictionDots.delete(id);
-          boostedDots.delete(id);
+        // If already at smallest size, vanish
+        if (dot.radius <= DEFAULT_RADIUS) {
+          // Animate shrink to zero then remove
+          activeAnimations.set(id, {
+            startRadius: dot.radius,
+            targetRadius: 0,
+            startTime: performance.now(),
+            startX: dot.x,
+            startY: dot.y,
+            targetX: dot.x,
+            targetY: dot.y,
+            removeOnComplete: true
+          });
+          startAnimationLoop();
         } else {
-          dot.radius = newRadius;
+          // Shrink to half size, but not smaller than DEFAULT_RADIUS
+          const newRadius = Math.max(dot.radius / 2, DEFAULT_RADIUS);
+          animateDotRadius(id, newRadius);
         }
-        render();
       }
 
       // ========== HOLD TIMER ==========
@@ -3342,319 +3624,7 @@
       }
 
       // ========== DOT EVENT HANDLERS ==========
-      function onDotMouseDown(event, d) {
-        event.stopPropagation();
-
-        // Handle paint mode
-        if (paintMode && selectedPaintColor) {
-          if (selectedPaintColor === "reset") {
-            delete d.color;
-          } else {
-            d.color = selectedPaintColor;
-          }
-          render();
-          return;
-        }
-
-        // Handle lock mode
-        if (lockMode) {
-          d.locked = !d.locked;
-          // Stop the dot if locking it
-          if (d.locked) {
-            dotVelocities.delete(d.id);
-            noFrictionDots.delete(d.id);
-            boostedDots.delete(d.id);
-          }
-          render();
-          return;
-        }
-
-        // Don't allow dragging locked dots
-        if (d.locked) return;
-
-        holdDotId = d.id;
-
-        const [mx, my] = d3.pointer(event, svg.node());
-        dragStartPos = { x: mx, y: my };
-        dragOriginalPos = { x: d.x, y: d.y };
-        dragDotId = d.id;
-        isDragging = false;
-
-        // Initialize velocity for this dot if not already moving
-        if (!dotVelocities.has(d.id)) {
-          dotVelocities.set(d.id, { vx: 0, vy: 0 });
-        }
-
-        holdTimer = setTimeout(() => {
-          if (holdDotId === d.id && !isDragging) {
-            shrinkDot(d.id);
-          }
-          clearHoldTimer();
-        }, HOLD_DURATION);
-      }
-
-      function onDotMouseUp(event, d) {
-        event.stopPropagation();
-        finalizeDrag();
-        clearHoldTimer();
-      }
-
-      function onDotMouseLeave(event, d) {
-        if (!isDragging) {
-          clearHoldTimer();
-        }
-      }
-
-      function onDotDoubleClick(event, d) {
-        event.stopPropagation();
-        event.preventDefault();
-        clearHoldTimer();
-
-        // If dot is moving, stop it
-        if (dotVelocities.has(d.id)) {
-          const vel = dotVelocities.get(d.id);
-          const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy);
-          if (speed > MIN_VELOCITY) {
-            dotVelocities.delete(d.id);
-            noFrictionDots.delete(d.id);
-            const snapped = snapToGrid(d.x, d.y);
-            if (!wouldOverlap(snapped.x, snapped.y, d.radius, d.id)) {
-              d.x = snapped.x;
-              d.y = snapped.y;
-            }
-            render();
-            return;
-          }
-        }
-
-        growDot(d.id);
-      }
-
-      // ========== TOUCH EVENT HANDLERS FOR DOTS ==========
-      function onDotTouchStart(event, d) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        // Handle paint mode
-        if (paintMode && selectedPaintColor) {
-          if (selectedPaintColor === "reset") {
-            delete d.color;
-          } else {
-            d.color = selectedPaintColor;
-          }
-          render();
-          return;
-        }
-
-        // Handle lock mode
-        if (lockMode) {
-          d.locked = !d.locked;
-          if (d.locked) {
-            dotVelocities.delete(d.id);
-            noFrictionDots.delete(d.id);
-            boostedDots.delete(d.id);
-          }
-          render();
-          return;
-        }
-
-        // Don't allow dragging locked dots
-        if (d.locked) return;
-
-        const touch = event.touches[0];
-        const [tx, ty] = [touch.clientX, touch.clientY];
-
-        // Check for double-tap
-        const now = Date.now();
-        if (
-          lastTapTime &&
-          now - lastTapTime < DOUBLE_TAP_THRESHOLD &&
-          lastTapPos
-        ) {
-          const dist = Math.sqrt(
-            (tx - lastTapPos.x) ** 2 + (ty - lastTapPos.y) ** 2,
-          );
-          if (dist < DOUBLE_TAP_DISTANCE) {
-            // Double-tap detected
-            lastTapTime = 0;
-            lastTapPos = null;
-            onDotDoubleClick(event, d);
-            return;
-          }
-        }
-        lastTapTime = now;
-        lastTapPos = { x: tx, y: ty };
-
-        // Start drag
-        holdDotId = d.id;
-        const rect = svg.node().getBoundingClientRect();
-        dragStartPos = { x: tx - rect.left, y: ty - rect.top };
-        dragOriginalPos = { x: d.x, y: d.y };
-        dragDotId = d.id;
-        isDragging = false;
-
-        if (!dotVelocities.has(d.id)) {
-          dotVelocities.set(d.id, { vx: 0, vy: 0 });
-        }
-
-        holdTimer = setTimeout(() => {
-          if (holdDotId === d.id && !isDragging) {
-            shrinkDot(d.id);
-          }
-          clearHoldTimer();
-        }, HOLD_DURATION);
-      }
-
-      function onDotTouchMove(event, d) {
-        if (dragDotId === null) return;
-        event.preventDefault();
-
-        const touch = event.touches[0];
-        const rect = svg.node().getBoundingClientRect();
-        const tx = touch.clientX - rect.left;
-        const ty = touch.clientY - rect.top;
-
-        const dx = tx - dragStartPos.x;
-        const dy = ty - dragStartPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (!isDragging && distance > DRAG_THRESHOLD) {
-          isDragging = true;
-          clearHoldTimer();
-          svg.classed("dragging", true);
-          startPhysicsLoop();
-        }
-
-        if (isDragging) {
-          dragTargetPos = {
-            x: dragOriginalPos.x + dx,
-            y: dragOriginalPos.y + dy,
-          };
-        }
-      }
-
-      function onDotTouchEnd(event, d) {
-        event.preventDefault();
-        finalizeDrag();
-        clearHoldTimer();
-      }
-
-      // ========== DRAG HANDLING ==========
-      svg.on("mousemove", function (event) {
-        // Handle cluster black dot dragging
-        if (clusterDragDotId !== null) {
-          const [mx, my] = d3.pointer(event, svg.node());
-          const dx = mx - clusterDragStartPos.x;
-          const dy = my - clusterDragStartPos.y;
-          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
-          if (dot) {
-            const newX = clusterDragOriginalPos.x + dx;
-            const newY = clusterDragOriginalPos.y + dy;
-
-            // Track velocity based on position change
-            if (clusterDragLastPos) {
-              clusterDragVelocity.vx =
-                (newX - clusterDragLastPos.x) * 0.5 +
-                clusterDragVelocity.vx * 0.5;
-              clusterDragVelocity.vy =
-                (newY - clusterDragLastPos.y) * 0.5 +
-                clusterDragVelocity.vy * 0.5;
-            }
-            clusterDragLastPos = { x: newX, y: newY };
-
-            dot.x = newX;
-            dot.y = newY;
-            // Keep in bounds
-            dot.x = Math.max(
-              dot.radius,
-              Math.min(window.innerWidth - dot.radius, dot.x),
-            );
-            dot.y = Math.max(
-              dot.radius,
-              Math.min(window.innerHeight - dot.radius, dot.y),
-            );
-          }
-          return;
-        }
-
-        if (dragDotId === null) return;
-
-        const [mx, my] = d3.pointer(event, svg.node());
-        const dx = mx - dragStartPos.x;
-        const dy = my - dragStartPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (!isDragging && distance > DRAG_THRESHOLD) {
-          isDragging = true;
-          clearHoldTimer();
-          svg.classed("dragging", true);
-          startPhysicsLoop();
-        }
-
-        if (isDragging) {
-          dragTargetPos = {
-            x: dragOriginalPos.x + dx,
-            y: dragOriginalPos.y + dy,
-          };
-        }
-      });
-
-      svg.on("mouseup", function (event) {
-        // Handle cluster black dot release
-        if (clusterDragDotId !== null) {
-          finalizeClusterDrag();
-          return;
-        }
-        finalizeDrag();
-      });
-
-      // Touch handlers for cluster dragging
-      svg.on("touchmove", function (event) {
-        if (clusterDragDotId !== null) {
-          event.preventDefault();
-          const touch = event.touches[0];
-          const rect = svg.node().getBoundingClientRect();
-          const tx = touch.clientX - rect.left;
-          const ty = touch.clientY - rect.top;
-          const dx = tx - clusterDragStartPos.x;
-          const dy = ty - clusterDragStartPos.y;
-          const dot = clusterDots.find((d) => d.id === clusterDragDotId);
-          if (dot) {
-            const newX = clusterDragOriginalPos.x + dx;
-            const newY = clusterDragOriginalPos.y + dy;
-
-            // Track velocity
-            if (clusterDragLastPos) {
-              clusterDragVelocity.vx =
-                (newX - clusterDragLastPos.x) * 0.5 +
-                clusterDragVelocity.vx * 0.5;
-              clusterDragVelocity.vy =
-                (newY - clusterDragLastPos.y) * 0.5 +
-                clusterDragVelocity.vy * 0.5;
-            }
-            clusterDragLastPos = { x: newX, y: newY };
-
-            dot.x = newX;
-            dot.y = newY;
-            dot.x = Math.max(
-              dot.radius,
-              Math.min(window.innerWidth - dot.radius, dot.x),
-            );
-            dot.y = Math.max(
-              dot.radius,
-              Math.min(window.innerHeight - dot.radius, dot.y),
-            );
-          }
-        }
-      });
-
-      svg.on("touchend", function (event) {
-        if (clusterDragDotId !== null) {
-          event.preventDefault();
-          finalizeClusterDrag();
-        }
-      });
-
+      // ========== DRAG FINALIZATION ==========
       function finalizeDrag() {
         if (isDragging && dragDotId !== null) {
           // On release, just let physics continue - don't switch modes
@@ -3689,6 +3659,7 @@
               !golfHoleComplete
             ) {
               golfStrokes++;
+              golfBallThrown = true; // Mark that ball was properly thrown
               updateGolfHUD();
             }
 
@@ -3740,7 +3711,7 @@
         dragOriginalPos = null;
         dragTargetPos = null;
         velocityHistory = [];
-        svg.classed("dragging", false);
+        gameCanvas.classList.remove("dragging");
       }
 
       function finalizeClusterDrag() {
@@ -3780,7 +3751,7 @@
         clusterDragOriginalPos = null;
         clusterDragLastPos = null;
         clusterDragVelocity = { vx: 0, vy: 0 };
-        svg.classed("dragging", false);
+        gameCanvas.classList.remove("dragging");
       }
 
       // ========== UNIFIED PHYSICS LOOP ==========
@@ -3812,6 +3783,67 @@
             // The velocity IS the movement toward target (weighted)
             vel.vx = toTargetX * responsiveness;
             vel.vy = toTargetY * responsiveness;
+          }
+        }
+
+        // Step 1.5: Apply orbital mechanics (dots orbit around sun like moon around earth)
+        // Only applies to dots already in orbitingDots set (added when created or thrown)
+        if (orbitMode && orbitSunId !== null && !isFrozen) {
+          const sun = dots.find(d => d.id === orbitSunId);
+          if (sun) {
+            const strength = getOrbitStrength();
+
+            // Only process dots that are already orbiting
+            for (const dotId of orbitingDots) {
+              const dot = dots.find(d => d.id === dotId);
+              if (!dot || dot.locked) {
+                orbitingDots.delete(dotId);
+                continue;
+              }
+
+              const dx = dot.x - sun.x;
+              const dy = dot.y - sun.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+
+              const maxRange = 500;
+              if (dist > maxRange) {
+                orbitingDots.delete(dotId);
+                continue;
+              }
+
+              // Minimum orbital distance - keep dots away from sun
+              const minOrbitDist = sun.radius + dot.radius + 30;
+
+              // Remove friction for orbiting dots so they maintain speed
+              noFrictionDots.add(dot.id);
+
+              // Get or create velocity
+              let vel = dotVelocities.get(dot.id);
+              if (!vel) {
+                vel = { vx: 0, vy: 0 };
+                dotVelocities.set(dot.id, vel);
+              }
+
+              // Calculate orbital radius (where the dot should orbit)
+              const orbitRadius = Math.max(dist, minOrbitDist);
+
+              // Angular velocity (radians per frame) - scales with strength, slower when further
+              const angularVel = (0.02 + strength * 0.02) * (100 / orbitRadius);
+
+              // Current angle from sun to dot
+              const angle = Math.atan2(dy, dx);
+
+              // New angle (rotate counter-clockwise)
+              const newAngle = angle + angularVel;
+
+              // Target position on orbit
+              const targetX = sun.x + Math.cos(newAngle) * orbitRadius;
+              const targetY = sun.y + Math.sin(newAngle) * orbitRadius;
+
+              // Set velocity to move toward target position
+              vel.vx = (targetX - dot.x) * 0.5;
+              vel.vy = (targetY - dot.y) * 0.5;
+            }
           }
         }
 
@@ -4023,11 +4055,12 @@
 
         render();
 
-        // Continue loop if any dots are moving OR dragging is active OR cluster mode active
+        // Continue loop if any dots are moving OR dragging is active OR cluster mode active OR orbit mode with attractor
         if (
           dotVelocities.size > 0 ||
           isDragging ||
-          (clusterMode && clusterRoundActive)
+          (clusterMode && clusterRoundActive) ||
+          (orbitMode && orbitSunId !== null)
         ) {
           physicsAnimationId = requestAnimationFrame(physicsLoop);
         } else {
@@ -4052,41 +4085,6 @@
       }
 
       // ========== BACKGROUND HANDLERS ==========
-      background.on("dblclick", function (event) {
-        const [x, y] = d3.pointer(event);
-        createDot(x, y);
-      });
-
-      // Touch support for background (double-tap to create)
-      background.on("touchstart", function (event) {
-        event.preventDefault();
-        const touch = event.touches[0];
-        const rect = svg.node().getBoundingClientRect();
-        const tx = touch.clientX - rect.left;
-        const ty = touch.clientY - rect.top;
-
-        const now = Date.now();
-        if (
-          lastTapTime &&
-          now - lastTapTime < DOUBLE_TAP_THRESHOLD &&
-          lastTapPos
-        ) {
-          const dist = Math.sqrt(
-            (touch.clientX - lastTapPos.x) ** 2 +
-              (touch.clientY - lastTapPos.y) ** 2,
-          );
-          if (dist < DOUBLE_TAP_DISTANCE) {
-            // Double-tap detected - create dot
-            lastTapTime = 0;
-            lastTapPos = null;
-            createDot(tx, ty);
-            return;
-          }
-        }
-        lastTapTime = now;
-        lastTapPos = { x: touch.clientX, y: touch.clientY };
-      });
-
       // ========== UI CONTROLS ==========
 
       // Controls panel toggle
@@ -4134,7 +4132,8 @@
 
       // Helper to get current physics values
       function getFriction() {
-        return parseFloat(frictionSlider.value) / 100;
+        // Slider: 0 = no friction (1.0), 10 = max friction (0.9)
+        return 1 - parseFloat(frictionSlider.value) / 100;
       }
 
       function getRestitution() {
@@ -4152,6 +4151,117 @@
           dotVelocities.clear();
           noFrictionDots.clear();
           boostedDots.clear();
+        }
+      });
+
+      // Click freeze indicator to exit freeze mode
+      freezeIndicator.addEventListener("click", () => {
+        if (isFrozen) {
+          isFrozen = false;
+          freezeToggle.checked = false;
+          freezeIndicator.classList.remove("active");
+        }
+      });
+
+      // Orbit mode toggle
+      const orbitToggle = document.getElementById("orbitToggle");
+
+      const orbitStrengthRow = document.getElementById("orbitStrengthRow");
+      const orbitStrengthSlider = document.getElementById("orbitStrength");
+      const orbitStrengthValue = document.getElementById("orbitStrengthValue");
+      const orbitHint = document.getElementById("orbitHint");
+
+      orbitStrengthSlider.addEventListener("input", () => {
+        orbitStrengthValue.textContent = orbitStrengthSlider.value;
+      });
+
+      function getOrbitStrength() {
+        return parseFloat(orbitStrengthSlider.value) / 50; // 50 = 1x, 100 = 2x
+      }
+
+      function enableOrbitMode() {
+        orbitMode = true;
+        orbitToggle.checked = true;
+        orbitStrengthRow.style.display = "flex";
+        orbitHint.style.display = orbitSunId === null ? "block" : "none";
+
+        // Exit other modes
+        if (paintMode) {
+          paintMode = false;
+          paintModeToggle.classList.remove("active");
+          paintIndicator.classList.remove("active");
+        }
+        if (lockMode) {
+          lockMode = false;
+          lockModeToggle.classList.remove("active");
+          lockIndicator.classList.remove("active");
+        }
+      }
+
+      function disableOrbitMode() {
+        orbitMode = false;
+        orbitToggle.checked = false;
+        orbitStrengthRow.style.display = "none";
+        orbitHint.style.display = "none";
+
+        // Restore the sun to a normal dot
+        if (orbitSunId !== null) {
+          const sun = dots.find(d => d.id === orbitSunId);
+          if (sun) {
+            sun.isSun = false;
+            sun.locked = false; // Unlock it so it can move again
+          }
+          orbitSunId = null;
+          orbitingDots.clear();
+          render();
+        }
+      }
+
+      function setOrbitAttractor(dot) {
+        // Unmark previous sun
+        if (orbitSunId !== null) {
+          const oldSun = dots.find(d => d.id === orbitSunId);
+          if (oldSun) {
+            oldSun.isSun = false;
+          }
+        }
+
+        // Mark new sun
+        dot.isSun = true;
+        dot.locked = true; // Lock it so it doesn't move
+        orbitSunId = dot.id;
+        orbitingDots.clear();
+        orbitHint.style.display = "none";
+
+        // Stop any velocity on the sun
+        dotVelocities.delete(dot.id);
+        noFrictionDots.delete(dot.id);
+        boostedDots.delete(dot.id);
+
+        // Add all existing dots (except the sun) to orbiting set
+        for (const otherDot of dots) {
+          if (otherDot.id === dot.id) continue;
+          if (otherDot.locked) continue;
+          if (orbitingDots.size >= MAX_ORBITERS) break;
+
+          // Give the dot initial velocity if it doesn't have any
+          if (!dotVelocities.has(otherDot.id)) {
+            dotVelocities.set(otherDot.id, { vx: 0, vy: 0 });
+          }
+          orbitingDots.add(otherDot.id);
+        }
+
+        render();
+
+        // Start physics loop so gravity runs continuously
+        startPhysicsLoop();
+      }
+
+      orbitToggle.addEventListener("change", () => {
+        if (orbitToggle.checked) {
+          enableOrbitMode();
+        } else {
+          disableOrbitMode();
         }
       });
 
@@ -4300,6 +4410,20 @@
         chainThresholdValue.textContent = chainThresholdSlider.value;
       });
 
+      // Chain sensitivity slider (new games tab)
+      const chainSensitivitySlider = document.getElementById("chainSensitivity");
+      const chainSensitivityValue = document.getElementById("chainSensitivityValue");
+      if (chainSensitivitySlider && chainSensitivityValue) {
+        chainSensitivitySlider.addEventListener("input", () => {
+          chainSensitivityValue.textContent = chainSensitivitySlider.value;
+          // Keep both sliders in sync
+          if (chainThresholdSlider) {
+            chainThresholdSlider.value = chainSensitivitySlider.value;
+            chainThresholdValue.textContent = chainSensitivitySlider.value;
+          }
+        });
+      }
+
       chainStartBtn.addEventListener("click", () => {
         if (chainReactionActive) return;
         chainWaitingForThrow = true;
@@ -4427,7 +4551,8 @@
       // Grid toggle
       const gridToggle = document.getElementById("gridToggle");
       gridToggle.addEventListener("change", () => {
-        gridGroup.style("display", gridToggle.checked ? "block" : "none");
+        showGrid = gridToggle.checked;
+        renderCanvas();
       });
 
       // Theme selector
@@ -4439,15 +4564,11 @@
 
         currentTheme = themeName;
 
-        // Update background
+        // Update body background (fallback)
         document.body.style.background = theme.background;
-        background.attr("fill", theme.background);
 
-        // Update existing dots
-        dotsGroup
-          .selectAll("circle")
-          .attr("fill", theme.dotFill)
-          .attr("stroke", theme.dotStroke);
+        // Re-render canvas with new theme
+        renderCanvas();
 
         // Update UI elements that need theme colors
         document.querySelectorAll("#modifiers .modifier").forEach((el) => {
@@ -4457,10 +4578,6 @@
               : "rgba(0,0,0,0.8)";
           el.style.color = theme.ui === "#ffffff" ? "#000" : "#fff";
         });
-
-        freezeIndicator.style.background =
-          theme.ui === "#ffffff" ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.8)";
-        freezeIndicator.style.color = theme.ui === "#ffffff" ? "#000" : "#fff";
 
         // Update help button
         const helpBtn = document.getElementById("helpBtn");
@@ -4487,6 +4604,7 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
+        orbitingDots.clear();
         render();
       });
 
@@ -4570,10 +4688,7 @@
             }
             if (state.settings.showGrid !== undefined) {
               gridToggle.checked = state.settings.showGrid;
-              gridGroup.style(
-                "display",
-                state.settings.showGrid ? "block" : "none",
-              );
+              showGrid = state.settings.showGrid;
             }
           }
 
@@ -4597,6 +4712,12 @@
         dotVelocities.clear();
         noFrictionDots.clear();
         boostedDots.clear();
+        // Reset orbit mode
+        if (orbitMode) {
+          orbitSunId = null;
+          orbitingDots.clear();
+          disableOrbitMode();
+        }
         render();
       });
 
@@ -4632,8 +4753,18 @@
         if (e.key === "l" || e.key === "L") {
           toggleLockMode();
         }
+        if (e.key === "o" || e.key === "O") {
+          if (orbitMode) {
+            disableOrbitMode();
+          } else {
+            enableOrbitMode();
+          }
+        }
         if (e.key === "s" || e.key === "S") {
-          // Stop all dots
+          // Disable stop during golf/pinball mode
+          if (golfMode || pinballMode) return;
+
+          // Stop all dots (including orbiting ones)
           for (const [dotId, vel] of dotVelocities) {
             const dot = dots.find((d) => d.id === dotId);
             if (dot) {
@@ -4647,6 +4778,7 @@
           dotVelocities.clear();
           noFrictionDots.clear();
           boostedDots.clear();
+          orbitingDots.clear();
           render();
         }
         if (e.key === "?") {
@@ -4698,43 +4830,25 @@
         }
       });
 
-      // ========== GAME SCOREBOARD ==========
-      let currentGame = "sandbox";
-      let scoreboardOpen = false;
+      // ========== PANEL TABS ==========
+      document.querySelectorAll(".panel-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const tabName = tab.dataset.tab;
 
-      // Toggle scoreboard open/closed
-      document.getElementById("scoreboardToggle").addEventListener("click", () => {
-        scoreboardOpen = !scoreboardOpen;
-        document.getElementById("gameBoard").classList.toggle("open", scoreboardOpen);
+          // Update tab buttons
+          document.querySelectorAll(".panel-tab").forEach((t) => {
+            t.classList.toggle("active", t.dataset.tab === tabName);
+          });
+
+          // Update tab content
+          document.querySelectorAll(".panel-content").forEach((content) => {
+            content.classList.toggle("active", content.dataset.tab === tabName);
+          });
+        });
       });
 
-      // Get display name for game
-      function getGameDisplayName(game) {
-        const names = {
-          sandbox: "Free Play",
-          chain: "Chain",
-          golf: "Golf",
-          pinball: "Pinball",
-          cluster: "Cluster"
-        };
-        return names[game] || game;
-      }
-
-      // Get current score for collapsed view
-      function getCurrentScoreDisplay() {
-        switch (currentGame) {
-          case "chain":
-            return chainReactionScore > 0 ? chainReactionScore.toString() : "";
-          case "golf":
-            return golfStrokes > 0 ? golfStrokes.toString() : "";
-          case "pinball":
-            return pinballScore > 0 ? pinballScore.toString() : "";
-          case "cluster":
-            return clusterTimeElapsed > 0 ? formatClusterTime(clusterTimeElapsed) : "";
-          default:
-            return dots.length > 0 ? dots.length.toString() : "";
-        }
-      }
+      // ========== GAME MODES ==========
+      let currentGame = "sandbox";
 
       function switchGame(gameName) {
         // Exit current game
@@ -4756,14 +4870,14 @@
 
         currentGame = gameName;
 
-        // Update tabs
-        document.querySelectorAll(".game-tab").forEach((tab) => {
-          tab.classList.toggle("active", tab.dataset.game === gameName);
+        // Update game mode buttons
+        document.querySelectorAll(".game-mode-btn").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.game === gameName);
         });
 
-        // Update content panels
-        document.querySelectorAll(".scoreboard-content").forEach((panel) => {
-          panel.classList.toggle("active", panel.dataset.game === gameName);
+        // Update game stats panels
+        document.querySelectorAll("#gameStatsArea .game-stats").forEach((panel) => {
+          panel.style.display = panel.dataset.game === gameName ? "block" : "none";
         });
 
         // Enter new game mode
@@ -4781,94 +4895,85 @@
           clusterToggle.dispatchEvent(new Event("change"));
         }
 
-        updateScoreboard();
+        updateGameStats();
       }
 
-      // Tab click handlers
-      document.querySelectorAll(".game-tab").forEach((tab) => {
-        tab.addEventListener("click", () => {
-          switchGame(tab.dataset.game);
+      // Game mode button handlers
+      document.querySelectorAll(".game-mode-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          switchGame(btn.dataset.game);
         });
       });
 
-      // Scoreboard button handlers
-      document.getElementById("chainStartBtn2").addEventListener("click", () => {
+      // Game action button handlers
+      document.getElementById("chainStartBtn3").addEventListener("click", () => {
         if (chainReactionActive) return;
         chainWaitingForThrow = true;
-        document.getElementById("chainStartBtn2").textContent = "Throw a dot!";
-        document.getElementById("chainStatusText").textContent = "Throw any dot to start!";
+        document.getElementById("chainStartBtn3").textContent = "Throw a dot!";
+        document.getElementById("statsChainStatus").textContent = "Throw any dot to start!";
       });
 
-      document.getElementById("chainResetBtn2").addEventListener("click", () => {
+      document.getElementById("chainResetBtn3").addEventListener("click", () => {
         chainWaitingForThrow = false;
-        document.getElementById("chainStartBtn2").textContent = "Start Chain";
+        document.getElementById("chainStartBtn3").textContent = "Start Chain";
         resetChainReaction();
-        updateScoreboard();
+        updateGameStats();
       });
 
-      document.getElementById("golfActionBtn").addEventListener("click", () => {
+      document.getElementById("golfActionBtn2").addEventListener("click", () => {
         if (golfHoleComplete) {
           nextGolfHole();
         } else if (golfBallId === null) {
           startGolfHole();
         }
-        updateScoreboard();
+        updateGameStats();
       });
 
-      document.getElementById("pinballActionBtn").addEventListener("click", () => {
+      document.getElementById("pinballActionBtn2").addEventListener("click", () => {
         startPinballRound();
-        updateScoreboard();
+        updateGameStats();
       });
 
-      document.getElementById("clusterActionBtn").addEventListener("click", () => {
+      document.getElementById("clusterActionBtn2").addEventListener("click", () => {
         startClusterRound();
-        updateScoreboard();
+        updateGameStats();
       });
 
-      // Update scoreboard display
-      function updateScoreboard() {
+      // Update game stats display
+      function updateGameStats() {
         // Sandbox
-        document.getElementById("sandboxDotCount").textContent = dots.length;
+        document.getElementById("statsDotCount").textContent = dots.length;
 
         // Chain
-        document.getElementById("chainScoreMain").textContent = chainReactionScore;
-        document.getElementById("chainTotalDots").textContent = dots.length;
-
-        const chainPctBadge = document.getElementById("chainPctBadge");
-        if (chainReactionActive || chainReactionScore > 0) {
-          const pct = dots.length > 0 ? Math.round((chainReactionScore / dots.length) * 100) : 0;
-          chainPctBadge.textContent = pct + "%";
-          chainPctBadge.style.display = "inline-block";
-        } else {
-          chainPctBadge.style.display = "none";
-        }
+        document.getElementById("statsChainScore").textContent = chainReactionScore;
+        document.getElementById("statsChainTotal").textContent = dots.length;
 
         if (chainReactionActive) {
-          document.getElementById("chainStatusText").textContent = "Chain reaction in progress...";
-          document.getElementById("chainStartBtn2").textContent = "In Progress";
+          document.getElementById("statsChainStatus").textContent = "Chain reaction in progress...";
+          document.getElementById("chainStartBtn3").textContent = "In Progress";
         } else if (chainReactionScore > 0) {
-          document.getElementById("chainStatusText").textContent = "Round complete!";
-          document.getElementById("chainStartBtn2").textContent = "Start Chain";
+          document.getElementById("statsChainStatus").textContent = "Round complete!";
+          document.getElementById("chainStartBtn3").textContent = "Start Chain";
         } else {
-          document.getElementById("chainStatusText").textContent = "Place dots, then start";
-          document.getElementById("chainStartBtn2").textContent = "Start Chain";
+          document.getElementById("statsChainStatus").textContent = "Place dots, then start";
+          document.getElementById("chainStartBtn3").textContent = "Start Chain";
         }
 
         // Golf
-        document.getElementById("golfHoleNum").textContent = "Hole " + golfHoleNumber;
-        document.getElementById("golfParBadge").textContent = "PAR " + golfPar;
-        document.getElementById("golfStrokesMain").textContent = golfStrokes;
+        document.getElementById("statsGolfHole").textContent = "Hole " + golfHoleNumber;
+        document.getElementById("statsGolfPar").textContent = "PAR " + golfPar;
+        document.getElementById("statsGolfStrokes").textContent = golfStrokes;
 
-        if (golfTotalScore === 0) {
-          document.getElementById("golfTotalScore").textContent = "E";
-        } else if (golfTotalScore > 0) {
-          document.getElementById("golfTotalScore").textContent = "+" + golfTotalScore;
-        } else {
-          document.getElementById("golfTotalScore").textContent = golfTotalScore;
+        let golfTotalText = "E";
+        if (golfTotalScore > 0) {
+          golfTotalText = "+" + golfTotalScore;
+        } else if (golfTotalScore < 0) {
+          golfTotalText = golfTotalScore.toString();
         }
+        document.getElementById("statsGolfTotal").textContent = golfTotalText;
 
-        const golfActionBtn = document.getElementById("golfActionBtn");
-        const golfResultText = document.getElementById("golfResultText");
+        const golfActionBtn2 = document.getElementById("golfActionBtn2");
+        const statsGolfResult = document.getElementById("statsGolfResult");
         if (golfHoleComplete) {
           const diff = golfStrokes - golfPar;
           let msg = "";
@@ -4879,78 +4984,74 @@
           else if (diff === 2) msg = "DOUBLE BOGEY";
           else if (diff > 2) msg = "+" + diff;
           else msg = diff.toString();
-          golfResultText.textContent = msg;
-          golfActionBtn.textContent = "Next Hole";
+          statsGolfResult.textContent = msg;
+          golfActionBtn2.textContent = "Next Hole";
         } else if (golfBallId !== null) {
-          golfResultText.textContent = "";
-          golfActionBtn.textContent = "Playing...";
+          statsGolfResult.textContent = "";
+          golfActionBtn2.textContent = "Playing...";
         } else {
-          golfResultText.textContent = "";
-          golfActionBtn.textContent = "Start Hole";
+          statsGolfResult.textContent = "";
+          golfActionBtn2.textContent = "Start Hole";
         }
 
         // Pinball
-        document.getElementById("pinballScoreMain").textContent = pinballScore;
-        document.getElementById("pinballBestScore").textContent = pinballBest;
+        document.getElementById("statsPinballScore").textContent = pinballScore;
+        document.getElementById("statsPinballBest").textContent = pinballBest;
 
-        const pinballActionBtn = document.getElementById("pinballActionBtn");
+        const pinballActionBtn2 = document.getElementById("pinballActionBtn2");
         if (pinballRoundActive) {
-          pinballActionBtn.textContent = "Playing...";
+          pinballActionBtn2.textContent = "Playing...";
         } else {
-          pinballActionBtn.textContent = "Start Round";
+          pinballActionBtn2.textContent = "Start Round";
         }
 
         // Cluster
-        document.getElementById("clusterTimerMain").textContent = formatClusterTime(clusterTimeElapsed);
-        document.getElementById("clusterBestTime").textContent = formatClusterTime(clusterBest);
+        document.getElementById("statsClusterTime").textContent = formatClusterTime(clusterTimeElapsed);
+        document.getElementById("statsClusterBest").textContent = formatClusterTime(clusterBest);
 
-        const clusterActionBtn = document.getElementById("clusterActionBtn");
+        const clusterActionBtn2 = document.getElementById("clusterActionBtn2");
         if (clusterRoundActive) {
-          clusterActionBtn.textContent = "Survive!";
+          clusterActionBtn2.textContent = "Survive!";
         } else {
-          clusterActionBtn.textContent = clusterTimeElapsed > 0 ? "Try Again" : "Start";
+          clusterActionBtn2.textContent = clusterTimeElapsed > 0 ? "Try Again" : "Start";
         }
-
-        // Update collapsed toggle display
-        document.getElementById("toggleGameName").textContent = getGameDisplayName(currentGame);
-        document.getElementById("toggleScoreValue").textContent = getCurrentScoreDisplay();
       }
 
-      // Hook into existing update functions to refresh scoreboard
+      // Hook into existing update functions to refresh game stats
       const originalUpdateChainScoreDisplay = updateChainScoreDisplay;
       updateChainScoreDisplay = function () {
         originalUpdateChainScoreDisplay();
-        updateScoreboard();
+        updateGameStats();
       };
 
       const originalUpdateGolfHUD = updateGolfHUD;
       updateGolfHUD = function () {
         originalUpdateGolfHUD();
-        updateScoreboard();
+        updateGameStats();
       };
 
       const originalUpdatePinballHUD = updatePinballHUD;
       updatePinballHUD = function () {
         originalUpdatePinballHUD();
-        updateScoreboard();
+        updateGameStats();
       };
 
       const originalUpdateClusterHUD = updateClusterHUD;
       updateClusterHUD = function () {
         originalUpdateClusterHUD();
-        updateScoreboard();
+        updateGameStats();
       };
 
       // Update dot count periodically for sandbox mode
       setInterval(() => {
         if (currentGame === "sandbox") {
-          document.getElementById("sandboxDotCount").textContent = dots.length;
+          document.getElementById("statsDotCount").textContent = dots.length;
         }
       }, 500);
 
       // Initial render
       render();
-      updateScoreboard();
+      updateGameStats();
     </script>
   </body>
 </html>
