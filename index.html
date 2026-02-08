@@ -1525,6 +1525,14 @@
               <div class="game-stats-header">Chain Hits</div>
               <div class="game-stats-value"><span id="statsChainScore">0</span> <span style="font-size: 14px; opacity: 0.5;">/ <span id="statsChainTotal">0</span></span></div>
               <div class="game-stats-sub" id="statsChainStatus">Place dots, then start</div>
+              <div style="margin: 12px 0; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                  <label style="font-size: 11px; color: var(--text-secondary);">Sensitivity</label>
+                  <input type="range" id="chainSensitivity" min="1" max="20" value="8" style="flex: 1; max-width: 100px;" />
+                  <span id="chainSensitivityValue" style="font-size: 11px; color: var(--accent); min-width: 20px; text-align: right;">8</span>
+                </div>
+                <div style="font-size: 10px; color: var(--text-secondary); margin-top: 6px; opacity: 0.7;">Lower = easier to trigger chain</div>
+              </div>
               <button class="game-action-btn" id="chainStartBtn3">Start Chain</button>
               <button class="game-action-btn" id="chainResetBtn3" style="margin-top: 8px; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); color: var(--text-secondary);">Reset</button>
             </div>
@@ -1749,6 +1757,7 @@
       let golfHoleNumber = 1;
       let golfTotalScore = 0;
       let golfHoleComplete = false;
+      let golfBallThrown = false; // Track if ball was thrown (vs dragged)
 
       // Pinball game state
       let pinballMode = false;
@@ -2183,43 +2192,32 @@
       };
 
       const findPlacementPosition = (clickX, clickY, newRadius) => {
-        if (dots.length === 0) {
-          return snapToGrid(clickX, clickY);
+        // First try: place exactly where clicked (with grid snap)
+        const snapped = snapToGrid(clickX, clickY);
+        if (!wouldOverlap(snapped.x, snapped.y, newRadius)) {
+          return snapped;
         }
 
-        let nearestDot = null;
-        let nearestDistance = Infinity;
-        for (const dot of dots) {
-          const dx = clickX - dot.x;
-          const dy = clickY - dot.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < nearestDistance) {
-            nearestDistance = dist;
-            nearestDot = dot;
+        // Second try: place at exact click position without snap
+        if (!wouldOverlap(clickX, clickY, newRadius)) {
+          return { x: clickX, y: clickY };
+        }
+
+        // Third try: find nearest non-overlapping position
+        // Search in expanding circles around click point
+        for (let radius = newRadius; radius < newRadius * 4; radius += newRadius / 2) {
+          for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+            const testX = clickX + Math.cos(angle) * radius;
+            const testY = clickY + Math.sin(angle) * radius;
+            const testSnapped = snapToGrid(testX, testY);
+            if (!wouldOverlap(testSnapped.x, testSnapped.y, newRadius)) {
+              return testSnapped;
+            }
           }
         }
 
-        const touchDistance =
-          nearestDot.radius + Math.max(newRadius, nearestDot.radius);
-
-        if (nearestDistance > touchDistance * 2) {
-          return snapToGrid(clickX, clickY);
-        }
-
-        const dx = clickX - nearestDot.x;
-        const dy = clickY - nearestDot.y;
-
-        if (nearestDistance === 0) {
-          return { x: nearestDot.x + touchDistance, y: nearestDot.y };
-        }
-
-        const nx = dx / nearestDistance;
-        const ny = dy / nearestDistance;
-
-        return snapToGrid(
-          nearestDot.x + nx * touchDistance,
-          nearestDot.y + ny * touchDistance,
-        );
+        // Fallback: just return the snapped position (creation will be blocked by wouldOverlap check)
+        return snapped;
       };
 
       // ========== UNIFIED COLLISION SOLVER ==========
@@ -2334,7 +2332,7 @@
 
       // ========== CHAIN REACTION GAME ==========
       function getChainThreshold() {
-        const slider = document.getElementById("chainThresholdSlider");
+        const slider = document.getElementById("chainSensitivity");
         return slider ? parseFloat(slider.value) : CHAIN_IMPACT_THRESHOLD;
       }
 
@@ -2455,6 +2453,7 @@
 
         golfStrokes = 0;
         golfHoleComplete = false;
+        golfBallThrown = false;
 
         renderGolfTarget();
         updateGolfHUD();
@@ -2489,6 +2488,7 @@
         golfHoleNumber = 1;
         golfTotalScore = 0;
         golfHoleComplete = false;
+        golfBallThrown = false;
 
         dots = [];
         dotVelocities.clear();
@@ -2500,6 +2500,8 @@
 
       function checkGolfWin() {
         if (!golfMode || !golfBallId || !golfTarget || golfHoleComplete) return;
+        // Ball must have been thrown (not just dragged into hole)
+        if (!golfBallThrown) return;
 
         const ball = dots.find((d) => d.id === golfBallId);
         if (!ball) return;
@@ -2834,20 +2836,23 @@
           if (dot.id === clusterDragDotId) continue;
 
           if (!dot.isBlack) {
-            // Colored dots: Apply gravity toward same-colored dots
+            // Colored dots: Apply gentle gravity toward same-colored, same-sized dots
             for (const other of clusterDots) {
               if (
                 other.id === dot.id ||
                 other.isBlack ||
-                other.color !== dot.color
+                other.color !== dot.color ||
+                other.radius !== dot.radius
               )
                 continue;
 
               const dx = other.x - dot.x;
               const dy = other.y - dot.y;
               const dist = Math.sqrt(dx * dx + dy * dy);
+              const minDist = dot.radius + other.radius;
 
-              if (dist > 0 && dist < 300) {
+              // Only attract if not already touching
+              if (dist > minDist && dist < 300) {
                 const force = CLUSTER_GRAVITY / (dist * 0.1);
                 dot.vx += (dx / dist) * force;
                 dot.vy += (dy / dist) * force;
@@ -2890,7 +2895,10 @@
           }
         }
 
-        // Check for same-color clustering
+        // Resolve collisions between all dots (prevent overlap)
+        resolveClusterDotCollisions();
+
+        // Check for same-color clustering (merging 4+ dots)
         checkClusterCollisions();
 
         // Check for black dot attacks
@@ -2898,6 +2906,81 @@
 
         // Check lose condition
         checkClusterLoseCondition();
+      }
+
+      function resolveClusterDotCollisions() {
+        // Multiple iterations for stability
+        for (let iter = 0; iter < 3; iter++) {
+          for (let i = 0; i < clusterDots.length; i++) {
+            const a = clusterDots[i];
+
+            for (let j = i + 1; j < clusterDots.length; j++) {
+              const b = clusterDots[j];
+
+              const dx = b.x - a.x;
+              const dy = b.y - a.y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const minDist = a.radius + b.radius;
+
+              if (dist < minDist && dist > 0) {
+                // Calculate overlap
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                // Mass based on radius squared
+                const massA = a.radius * a.radius;
+                const massB = b.radius * b.radius;
+                const totalMass = massA + massB;
+
+                // Separate dots (skip if being dragged)
+                const aIsDragged = a.id === clusterDragDotId;
+                const bIsDragged = b.id === clusterDragDotId;
+
+                if (!aIsDragged && !bIsDragged) {
+                  // Both can move
+                  const moveA = overlap * (massB / totalMass);
+                  const moveB = overlap * (massA / totalMass);
+                  a.x -= nx * moveA;
+                  a.y -= ny * moveA;
+                  b.x += nx * moveB;
+                  b.y += ny * moveB;
+                } else if (aIsDragged) {
+                  // Only b can move
+                  b.x += nx * overlap;
+                  b.y += ny * overlap;
+                } else {
+                  // Only a can move
+                  a.x -= nx * overlap;
+                  a.y -= ny * overlap;
+                }
+
+                // Apply impulse for bounce (except for same-color same-size dots that might merge)
+                const shouldBounce = a.isBlack || b.isBlack ||
+                                     a.color !== b.color ||
+                                     a.radius !== b.radius;
+
+                if (shouldBounce && !aIsDragged && !bIsDragged) {
+                  // Relative velocity
+                  const dvx = b.vx - a.vx;
+                  const dvy = b.vy - a.vy;
+                  const dvDotN = dvx * nx + dvy * ny;
+
+                  // Only resolve if dots are approaching
+                  if (dvDotN < 0) {
+                    const restitution = 0.6;
+                    const impulse = -(1 + restitution) * dvDotN / totalMass;
+
+                    a.vx -= impulse * massB * nx;
+                    a.vy -= impulse * massB * ny;
+                    b.vx += impulse * massA * nx;
+                    b.vy += impulse * massA * ny;
+                  }
+                }
+              }
+            }
+          }
+        }
       }
 
       function checkClusterCollisions() {
@@ -3160,31 +3243,16 @@
           }
         }
 
-        // Draw golf target if in golf mode
+        // Draw golf hole if in golf mode
         if (golfMode && golfTarget) {
-          // Outer ring with dashed stroke
-          ctx.setLineDash([10, 5]);
-          ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-          ctx.strokeStyle = "#fff";
-          ctx.lineWidth = 3;
+          // Simple hole - dark circle with subtle border
+          ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(golfTarget.x, golfTarget.y, golfTarget.radius, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
-          ctx.setLineDash([]);
-
-          // Inner ring
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(golfTarget.x, golfTarget.y, golfTarget.radius * 0.5, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // Center dot
-          ctx.fillStyle = "#fff";
-          ctx.beginPath();
-          ctx.arc(golfTarget.x, golfTarget.y, 5, 0, Math.PI * 2);
-          ctx.fill();
         }
 
         // Draw pinball bumpers
@@ -3434,11 +3502,16 @@
           if (progress >= 1) {
             activeAnimations.delete(id);
             if (anim.removeOnComplete) {
-              // Remove the dot completely
-              dots = dots.filter((d) => d.id !== id);
-              dotVelocities.delete(id);
-              noFrictionDots.delete(id);
-              boostedDots.delete(id);
+              // Don't remove game mode balls
+              const isGameBall = (golfMode && id === golfBallId) ||
+                                 (pinballMode && id === pinballBallId);
+              if (!isGameBall) {
+                // Remove the dot completely
+                dots = dots.filter((d) => d.id !== id);
+                dotVelocities.delete(id);
+                noFrictionDots.delete(id);
+                boostedDots.delete(id);
+              }
             } else {
               dot.radius = anim.targetRadius;
               dot.x = anim.targetX;
@@ -3459,6 +3532,11 @@
       }
 
       function growDot(id) {
+        // Don't grow the golf ball during golf mode
+        if (golfMode && id === golfBallId) return;
+        // Don't grow the pinball ball during pinball mode
+        if (pinballMode && id === pinballBallId) return;
+
         const dot = dots.find((d) => d.id === id);
         if (!dot) return;
 
@@ -3507,11 +3585,16 @@
       }
 
       function shrinkDot(id) {
+        // Don't shrink the golf ball during golf mode
+        if (golfMode && id === golfBallId) return;
+        // Don't shrink the pinball ball during pinball mode
+        if (pinballMode && id === pinballBallId) return;
+
         const dot = dots.find((d) => d.id === id);
         if (!dot) return;
 
-        const newRadius = dot.radius / 2;
-        if (newRadius < MIN_RADIUS) {
+        // If already at smallest size, vanish
+        if (dot.radius <= DEFAULT_RADIUS) {
           // Animate shrink to zero then remove
           activeAnimations.set(id, {
             startRadius: dot.radius,
@@ -3525,6 +3608,8 @@
           });
           startAnimationLoop();
         } else {
+          // Shrink to half size, but not smaller than DEFAULT_RADIUS
+          const newRadius = Math.max(dot.radius / 2, DEFAULT_RADIUS);
           animateDotRadius(id, newRadius);
         }
       }
@@ -3574,6 +3659,7 @@
               !golfHoleComplete
             ) {
               golfStrokes++;
+              golfBallThrown = true; // Mark that ball was properly thrown
               updateGolfHUD();
             }
 
@@ -4147,10 +4233,23 @@
         orbitingDots.clear();
         orbitHint.style.display = "none";
 
-        // Stop any velocity
+        // Stop any velocity on the sun
         dotVelocities.delete(dot.id);
         noFrictionDots.delete(dot.id);
         boostedDots.delete(dot.id);
+
+        // Add all existing dots (except the sun) to orbiting set
+        for (const otherDot of dots) {
+          if (otherDot.id === dot.id) continue;
+          if (otherDot.locked) continue;
+          if (orbitingDots.size >= MAX_ORBITERS) break;
+
+          // Give the dot initial velocity if it doesn't have any
+          if (!dotVelocities.has(otherDot.id)) {
+            dotVelocities.set(otherDot.id, { vx: 0, vy: 0 });
+          }
+          orbitingDots.add(otherDot.id);
+        }
 
         render();
 
@@ -4310,6 +4409,20 @@
       chainThresholdSlider.addEventListener("input", () => {
         chainThresholdValue.textContent = chainThresholdSlider.value;
       });
+
+      // Chain sensitivity slider (new games tab)
+      const chainSensitivitySlider = document.getElementById("chainSensitivity");
+      const chainSensitivityValue = document.getElementById("chainSensitivityValue");
+      if (chainSensitivitySlider && chainSensitivityValue) {
+        chainSensitivitySlider.addEventListener("input", () => {
+          chainSensitivityValue.textContent = chainSensitivitySlider.value;
+          // Keep both sliders in sync
+          if (chainThresholdSlider) {
+            chainThresholdSlider.value = chainSensitivitySlider.value;
+            chainThresholdValue.textContent = chainSensitivitySlider.value;
+          }
+        });
+      }
 
       chainStartBtn.addEventListener("click", () => {
         if (chainReactionActive) return;
@@ -4648,6 +4761,9 @@
           }
         }
         if (e.key === "s" || e.key === "S") {
+          // Disable stop during golf/pinball mode
+          if (golfMode || pinballMode) return;
+
           // Stop all dots (including orbiting ones)
           for (const [dotId, vel] of dotVelocities) {
             const dot = dots.find((d) => d.id === dotId);

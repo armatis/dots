@@ -6,13 +6,49 @@
 
 - **Clarify before acting on vague or unexpected prompts**: If a prompt is ambiguous, seems unrelated to the current work, or could be interpreted multiple ways, ask for clarification before making changes. When asking, provide a suggestion or interpretation so the user can quickly confirm or redirect. Example: "I'm not sure what you mean by X. Did you want me to [suggestion A] or [suggestion B]?"
 
+## Git Workflow
+
+### Branching Strategy
+
+- **master**: Production-ready code. All PRs merge here.
+- **feature/\***: Feature branches for new functionality (e.g., `feature/canvas-rendering`)
+- Create feature branches from `master`, merge back via PR
+
+### Commit Guidelines
+
+- Write clear, concise commit messages in imperative mood ("Add feature" not "Added feature")
+- Keep commits focused on a single logical change
+- Reference issues in commit messages when applicable
+
+### Pull Request Process
+
+1. Create feature branch from `master`
+2. Make changes with atomic commits
+3. Push branch and create PR with descriptive title and summary
+4. Merge to `master` after review
+5. Delete feature branch after merge
+
+### What to Commit
+
+- Source code and configuration files
+- Documentation (CLAUDE.md, etc.)
+- Shared Claude settings (.claude/settings.json)
+
+### What NOT to Commit (see .gitignore)
+
+- Local settings (.claude/settings.local.json)
+- Dependencies (node_modules/)
+- Environment files (.env)
+- IDE/editor files (.idea/, .vscode/)
+- OS files (.DS_Store)
+
 ## Project Overview
 
 Dots is an experimental canvas-based game engine focused on circle physics, collisions, and interactive pattern generation. What started as a simple experiment to create growing and shrinking dots has evolved into a creative sandbox with multiple game mechanics centered around dot interactions.
 
 **Origin**: Inspired by geometric cross-hatch patterns (see shape.jpg), adapted to create dynamic circular pattern systems.
 
-**Current State**: Single-file vanilla JavaScript implementation using d3.js for rendering.
+**Current State**: Single-file vanilla JavaScript implementation using Canvas API for rendering (migrated from D3.js/SVG).
 
 **Vision**: Mobile-first interactive games with a powerful debugger panel for real-time physics experimentation, eventually available as iOS/Android apps.
 
@@ -20,8 +56,8 @@ Dots is an experimental canvas-based game engine focused on circle physics, coll
 
 ### Current Implementation
 
-- **File Structure**: Single `index.html` with ~2500 lines of JavaScript
-- **Rendering**: D3.js v7 (SVG-based) with data binding
+- **File Structure**: Single `index.html` with ~4500 lines of JavaScript
+- **Rendering**: Canvas API with manual hit detection (migrated from D3.js/SVG)
 - **Physics Engine**: Custom implementation handling:
   - Area-based mass calculation: `(radius/DEFAULT_RADIUS)²`
   - Unified collision solver with impulse-based elastic collisions
@@ -32,25 +68,20 @@ Dots is an experimental canvas-based game engine focused on circle physics, coll
   - Separate arrays for game modes (dots, clusterDots, pinballBumpers)
   - Velocity Map for unified movement tracking
   - Sets for modifiers (noFrictionDots, boostedDots)
-- **Performance**: ~50-60 dots smooth on desktop, ~20-30 on mobile before lag
+  - Animation system with easing for smooth size transitions
+- **UI**: Tabbed settings panel with Settings and Games tabs
+- **Performance**: Significantly improved with Canvas - handles 100+ dots smoothly
 
-### Architectural Concerns
+### Canvas Migration (Completed)
 
-⚠️ **D3.js Performance Bottlenecks Identified**:
+✅ **Phase 3 Canvas Migration Complete**:
 
-- **DOM Updates**: Every frame updates cx/cy/r attributes via D3 data binding
-- **SVG Overhead**: Each dot is a full DOM node with complex rendering pipeline
-- **No Culling**: Rendering all dots even when off-screen
-- **Multiple Render Paths**: Separate rendering for cluster mode (clusterDotsGroup) but still SVG
+- Full Canvas API rendering for all dots, trails, and game elements
+- Manual hit detection using distance calculations
+- D3.js removed from rendering pipeline (kept for UI elements only)
+- Animated transitions for dot size changes with easing functions
 
-**Measured Impact**:
-
-- Current: ~50 dots smooth on desktop, ~25 on mobile
-- Each D3 `.attr()` call triggers DOM mutation and repaint
-
-**Root Cause**: D3.js is designed for data visualization, not frame-based game rendering
-
-### Recommended Architecture (Future)
+### Future Optimizations
 
 ```
 Rendering Layer:
