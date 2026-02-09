@@ -1509,6 +1509,9 @@
             <button class="game-mode-btn" data-game="cluster">
               <span class="mode-icon">⬡</span> Cluster
             </button>
+            <button class="game-mode-btn" data-game="orbital">
+              <span class="mode-icon">🛰️</span> Orbital
+            </button>
           </div>
 
           <!-- Game Stats Area -->
@@ -1564,6 +1567,16 @@
               <div class="game-stats-sub">Best: <strong id="statsClusterBest">0:00</strong></div>
               <div class="game-stats-sub" id="statsClusterWarning" style="color: #ff6b6b; display: none;">CRITICAL MASS!</div>
               <button class="game-action-btn" id="clusterActionBtn2">Start</button>
+            </div>
+
+            <!-- Orbital Transfer -->
+            <div class="game-stats" data-game="orbital" style="display: none;">
+              <div class="game-stats-header">Level <span id="orbitalLevelNum">1</span></div>
+              <div class="game-stats-value">Launches: <span id="orbitalLaunchCount">0</span></div>
+              <div class="game-stats-sub" id="orbitalStatus">Hold attractor to charge, release to launch</div>
+              <button class="game-action-btn" id="orbitalStartBtn">Start Level</button>
+              <button class="game-action-btn" id="orbitalNextBtn" style="display: none;">Next Level</button>
+              <button class="game-action-btn" id="orbitalResetBtn" style="margin-top: 8px; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); color: var(--text-secondary);">Reset Level</button>
             </div>
           </div>
         </div>
@@ -1788,6 +1801,71 @@
       const CLUSTER_GRAVITY = 0.8; // Strong attraction between cells
       const CLUSTER_MERGE_SIZE = 4; // Dots needed to merge into larger
 
+      // Orbital Transfer game state
+      let orbitalTransferMode = false;
+      let orbitalAttractors = new Map(); // attractorId → { orbitingDots: Set, chargeLevel: number, isTarget: boolean }
+      let orbitalTargetId = null;        // Target attractor dot ID
+      let orbitalLaunches = 0;           // Count launches per level
+      let orbitalLevelComplete = false;
+      let orbitalCurrentLevel = 1;
+      let orbitalChargingId = null;      // Which attractor is being charged
+      let orbitalFreeDots = new Set();   // Dots that have been launched and are flying free
+
+      // Orbital Transfer constants
+      const ORBITAL_CHARGE_RATE = 0.03;      // How fast charge builds per frame
+      const ORBITAL_MAX_CHARGE = 3.0;        // Max speed multiplier
+      const ORBITAL_CAPTURE_RADIUS = 100;    // Distance to get captured
+      const ORBITAL_BASE_ANGULAR_VEL = 0.02; // Base orbit speed
+      const ORBITAL_ATTRACTOR_RADIUS = 25;   // Size of attractor dots
+
+      // Level definitions
+      const ORBITAL_LEVELS = [
+        {
+          // Level 1: Simple - two attractors, straight shot
+          attractors: [
+            { x: 0.2, y: 0.5, isStart: true },
+            { x: 0.8, y: 0.5, isTarget: true }
+          ],
+          satellites: 1
+        },
+        {
+          // Level 2: Angled shot
+          attractors: [
+            { x: 0.15, y: 0.35, isStart: true },
+            { x: 0.85, y: 0.65, isTarget: true }
+          ],
+          satellites: 1
+        },
+        {
+          // Level 3: Relay - use middle attractor
+          attractors: [
+            { x: 0.15, y: 0.5, isStart: true },
+            { x: 0.5, y: 0.25 },
+            { x: 0.85, y: 0.5, isTarget: true }
+          ],
+          satellites: 1
+        },
+        {
+          // Level 4: Two paths
+          attractors: [
+            { x: 0.15, y: 0.5, isStart: true },
+            { x: 0.5, y: 0.2 },
+            { x: 0.5, y: 0.8 },
+            { x: 0.85, y: 0.5, isTarget: true }
+          ],
+          satellites: 1
+        },
+        {
+          // Level 5: Triangle relay with 2 satellites
+          attractors: [
+            { x: 0.2, y: 0.7, isStart: true },
+            { x: 0.5, y: 0.2 },
+            { x: 0.8, y: 0.7, isTarget: true }
+          ],
+          satellites: 2
+        }
+      ];
+
       // ========== UNIFIED MASS FUNCTION ==========
       // Area-based mass: (radius / DEFAULT_RADIUS)^2
       function mass(dot) {
@@ -1926,6 +2004,14 @@
         // Always clear hold timer on release to prevent orphaned shrink timers
         clearHoldTimer();
 
+        // Orbital transfer - launch satellites on release
+        if (orbitalTransferMode && orbitalChargingId !== null) {
+          launchSatellites(orbitalChargingId);
+          orbitalChargingId = null;
+          render();
+          return;
+        }
+
         if (clusterDragDotId !== null) {
           finalizeClusterDrag();
           return;
@@ -2043,6 +2129,14 @@
         // Always clear hold timer on release to prevent orphaned shrink timers
         clearHoldTimer();
 
+        // Orbital transfer - launch satellites on release
+        if (orbitalTransferMode && orbitalChargingId !== null) {
+          launchSatellites(orbitalChargingId);
+          orbitalChargingId = null;
+          render();
+          return;
+        }
+
         if (clusterDragDotId !== null) {
           finalizeClusterDrag();
           return;
@@ -2053,6 +2147,17 @@
 
       // ========== DOT INTERACTION HANDLERS ==========
       function handleDotMouseDown(d, mx, my) {
+        // Handle orbital transfer mode - charging attractors
+        if (orbitalTransferMode && d.isOrbitalAttractor) {
+          const attractorData = orbitalAttractors.get(d.id);
+          if (attractorData && attractorData.orbitingDots.size > 0) {
+            orbitalChargingId = d.id;
+            attractorData.chargeLevel = 1.0;
+            render();
+          }
+          return;
+        }
+
         // Handle paint mode
         if (paintMode && selectedPaintColor) {
           if (selectedPaintColor === "reset") {
@@ -2104,6 +2209,17 @@
       }
 
       function handleDotTouchStart(d, tx, ty) {
+        // Handle orbital transfer mode - charging attractors
+        if (orbitalTransferMode && d.isOrbitalAttractor) {
+          const attractorData = orbitalAttractors.get(d.id);
+          if (attractorData && attractorData.orbitingDots.size > 0) {
+            orbitalChargingId = d.id;
+            attractorData.chargeLevel = 1.0;
+            render();
+          }
+          return;
+        }
+
         // Handle paint mode
         if (paintMode && selectedPaintColor) {
           if (selectedPaintColor === "reset") {
@@ -3175,6 +3291,261 @@
         renderCanvas();
       }
 
+      // ========== ORBITAL TRANSFER FUNCTIONS ==========
+      function startOrbitalTransferLevel(levelNum) {
+        const level = ORBITAL_LEVELS[levelNum - 1];
+        if (!level) return;
+
+        // Clear existing state
+        dots = [];
+        dotVelocities.clear();
+        noFrictionDots.clear();
+        boostedDots.clear();
+        orbitalAttractors.clear();
+        orbitalFreeDots.clear();
+        orbitalLaunches = 0;
+        orbitalLevelComplete = false;
+        orbitalChargingId = null;
+        orbitalTargetId = null;
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Create attractors
+        let startAttractorId = null;
+        for (const attr of level.attractors) {
+          const dot = {
+            id: nextId++,
+            x: attr.x * width,
+            y: attr.y * height,
+            radius: ORBITAL_ATTRACTOR_RADIUS,
+            isOrbitalAttractor: true,
+            isOrbitalTarget: attr.isTarget || false,
+            locked: true
+          };
+          dots.push(dot);
+
+          orbitalAttractors.set(dot.id, {
+            orbitingDots: new Set(),
+            chargeLevel: 1.0,
+            isTarget: attr.isTarget || false
+          });
+
+          if (attr.isStart) {
+            startAttractorId = dot.id;
+          }
+          if (attr.isTarget) {
+            orbitalTargetId = dot.id;
+          }
+        }
+
+        // Create satellites orbiting the start attractor
+        if (startAttractorId !== null) {
+          const startAttractor = dots.find(d => d.id === startAttractorId);
+          const attractorData = orbitalAttractors.get(startAttractorId);
+
+          for (let i = 0; i < level.satellites; i++) {
+            const angle = (i / level.satellites) * Math.PI * 2;
+            const orbitRadius = ORBITAL_ATTRACTOR_RADIUS + 50;
+            const satellite = {
+              id: nextId++,
+              x: startAttractor.x + Math.cos(angle) * orbitRadius,
+              y: startAttractor.y + Math.sin(angle) * orbitRadius,
+              radius: DEFAULT_RADIUS
+            };
+            dots.push(satellite);
+            dotVelocities.set(satellite.id, { vx: 0, vy: 0 });
+            attractorData.orbitingDots.add(satellite.id);
+          }
+        }
+
+        updateOrbitalHUD();
+        render();
+        startPhysicsLoop();
+      }
+
+      function updateOrbitalHUD() {
+        document.getElementById("orbitalLevelNum").textContent = orbitalCurrentLevel;
+        document.getElementById("orbitalLaunchCount").textContent = orbitalLaunches;
+
+        const statusEl = document.getElementById("orbitalStatus");
+        if (orbitalLevelComplete) {
+          statusEl.textContent = "Level Complete!";
+          statusEl.style.color = "#4ecdc4";
+          document.getElementById("orbitalNextBtn").style.display = "block";
+          document.getElementById("orbitalStartBtn").style.display = "none";
+        } else {
+          statusEl.textContent = "Hold attractor to charge, release to launch";
+          statusEl.style.color = "";
+          document.getElementById("orbitalNextBtn").style.display = "none";
+        }
+      }
+
+      function launchSatellites(attractorId) {
+        const attractorData = orbitalAttractors.get(attractorId);
+        if (!attractorData || attractorData.orbitingDots.size === 0) return;
+
+        const attractor = dots.find(d => d.id === attractorId);
+        if (!attractor) return;
+
+        orbitalLaunches++;
+
+        // Launch each satellite with its current tangential velocity
+        for (const satId of attractorData.orbitingDots) {
+          const satellite = dots.find(d => d.id === satId);
+          if (!satellite) continue;
+
+          const dx = satellite.x - attractor.x;
+          const dy = satellite.y - attractor.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          // Calculate tangential velocity (perpendicular to radial direction)
+          // Current angular velocity scaled by charge
+          const angularVel = ORBITAL_BASE_ANGULAR_VEL * attractorData.chargeLevel;
+          const tangentialSpeed = angularVel * dist * 15; // Scale for good launch speed
+
+          // Tangent is perpendicular to radius (counter-clockwise)
+          const tx = -dy / dist;
+          const ty = dx / dist;
+
+          // Set velocity
+          const vel = dotVelocities.get(satId) || { vx: 0, vy: 0 };
+          vel.vx = tx * tangentialSpeed;
+          vel.vy = ty * tangentialSpeed;
+          dotVelocities.set(satId, vel);
+
+          // Mark as free-flying
+          orbitalFreeDots.add(satId);
+        }
+
+        // Clear orbiting set
+        attractorData.orbitingDots.clear();
+        attractorData.chargeLevel = 1.0;
+
+        updateOrbitalHUD();
+      }
+
+      function checkOrbitalCapture() {
+        if (!orbitalTransferMode || orbitalLevelComplete) return;
+
+        const toCapture = []; // [{dotId, attractorId}]
+
+        for (const freeDotId of orbitalFreeDots) {
+          const dot = dots.find(d => d.id === freeDotId);
+          if (!dot) {
+            orbitalFreeDots.delete(freeDotId);
+            continue;
+          }
+
+          // Check against all attractors
+          for (const [attractorId, attractorData] of orbitalAttractors) {
+            const attractor = dots.find(d => d.id === attractorId);
+            if (!attractor) continue;
+
+            const dx = dot.x - attractor.x;
+            const dy = dot.y - attractor.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < ORBITAL_CAPTURE_RADIUS) {
+              toCapture.push({ dotId: freeDotId, attractorId });
+              break;
+            }
+          }
+        }
+
+        // Process captures
+        for (const { dotId, attractorId } of toCapture) {
+          orbitalFreeDots.delete(dotId);
+          const attractorData = orbitalAttractors.get(attractorId);
+          if (attractorData) {
+            attractorData.orbitingDots.add(dotId);
+
+            // Check win condition
+            if (attractorId === orbitalTargetId) {
+              orbitalLevelComplete = true;
+              updateOrbitalHUD();
+            }
+          }
+        }
+      }
+
+      function updateOrbitalPhysics() {
+        if (!orbitalTransferMode) return;
+
+        // Update charge level if charging
+        if (orbitalChargingId !== null) {
+          const attractorData = orbitalAttractors.get(orbitalChargingId);
+          if (attractorData) {
+            attractorData.chargeLevel = Math.min(
+              attractorData.chargeLevel + ORBITAL_CHARGE_RATE,
+              ORBITAL_MAX_CHARGE
+            );
+          }
+        }
+
+        // Update orbiting dots for each attractor
+        for (const [attractorId, attractorData] of orbitalAttractors) {
+          const attractor = dots.find(d => d.id === attractorId);
+          if (!attractor) continue;
+
+          for (const satId of attractorData.orbitingDots) {
+            const satellite = dots.find(d => d.id === satId);
+            if (!satellite) {
+              attractorData.orbitingDots.delete(satId);
+              continue;
+            }
+
+            const dx = satellite.x - attractor.x;
+            const dy = satellite.y - attractor.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist === 0) continue;
+
+            // Calculate target orbital position
+            const minOrbitDist = attractor.radius + satellite.radius + 20;
+            const orbitRadius = Math.max(dist, minOrbitDist);
+
+            // Angular velocity scaled by charge level
+            const angularVel = ORBITAL_BASE_ANGULAR_VEL * attractorData.chargeLevel;
+
+            // Calculate new angle
+            const angle = Math.atan2(dy, dx);
+            const newAngle = angle + angularVel;
+
+            // Target position
+            const targetX = attractor.x + Math.cos(newAngle) * orbitRadius;
+            const targetY = attractor.y + Math.sin(newAngle) * orbitRadius;
+
+            // Move toward target
+            const vel = dotVelocities.get(satId) || { vx: 0, vy: 0 };
+            vel.vx = (targetX - satellite.x) * 0.5;
+            vel.vy = (targetY - satellite.y) * 0.5;
+            dotVelocities.set(satId, vel);
+
+            // Keep friction disabled for orbiting
+            noFrictionDots.add(satId);
+          }
+        }
+
+        // Check for captures
+        checkOrbitalCapture();
+      }
+
+      function resetOrbitalTransfer() {
+        orbitalAttractors.clear();
+        orbitalFreeDots.clear();
+        orbitalTargetId = null;
+        orbitalLaunches = 0;
+        orbitalLevelComplete = false;
+        orbitalChargingId = null;
+        orbitalCurrentLevel = 1;
+        dots = [];
+        dotVelocities.clear();
+        noFrictionDots.clear();
+        boostedDots.clear();
+        render();
+      }
+
       function darkenColor(color) {
         // Simple color darkening for stroke
         const colors = {
@@ -3255,6 +3626,25 @@
           ctx.stroke();
         }
 
+        // Draw orbital transfer capture zones
+        if (orbitalTransferMode) {
+          for (const [attractorId, attractorData] of orbitalAttractors) {
+            const attractor = dots.find(d => d.id === attractorId);
+            if (!attractor) continue;
+
+            // Draw capture radius as subtle dashed circle
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = attractorData.isTarget
+              ? "rgba(78, 205, 196, 0.3)"
+              : "rgba(255, 255, 255, 0.15)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(attractor.x, attractor.y, ORBITAL_CAPTURE_RADIUS, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+
         // Draw pinball bumpers
         if (pinballMode) {
           for (const bumper of pinballBumpers) {
@@ -3325,6 +3715,39 @@
           if (dot.isSun) {
             strokeColor = "#FF8C00";
             strokeWidth = 4;
+          } else if (dot.isOrbitalAttractor) {
+            // Orbital Transfer attractor styling
+            const attractorData = orbitalAttractors.get(dot.id);
+            if (dot.isOrbitalTarget) {
+              // Target attractor - green with pulsing glow
+              strokeColor = "#4ecdc4";
+              strokeWidth = 4;
+              // Draw glow
+              ctx.save();
+              ctx.shadowColor = "#4ecdc4";
+              ctx.shadowBlur = 15 + Math.sin(Date.now() / 200) * 5;
+              ctx.beginPath();
+              ctx.arc(dot.x, dot.y, dot.radius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            } else if (orbitalChargingId === dot.id && attractorData) {
+              // Charging attractor - orange intensity based on charge
+              const intensity = attractorData.chargeLevel / ORBITAL_MAX_CHARGE;
+              strokeColor = `rgb(255, ${Math.floor(140 - intensity * 100)}, 0)`;
+              strokeWidth = 3 + intensity * 3;
+              // Draw charge indicator arc
+              ctx.save();
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.arc(dot.x, dot.y, dot.radius + 8, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * intensity));
+              ctx.stroke();
+              ctx.restore();
+            } else {
+              // Normal attractor
+              strokeColor = "#888";
+              strokeWidth = 3;
+            }
           } else if (dot.locked) {
             strokeColor = "#ffc107";
             strokeWidth = 3;
@@ -3348,7 +3771,7 @@
       // ========== DOT CREATION ==========
       function createDot(x, y) {
         // Disable dot creation in game modes
-        if (golfMode || pinballMode || clusterMode) return;
+        if (golfMode || pinballMode || clusterMode || orbitalTransferMode) return;
 
         const count = parseInt(
           document.getElementById("countSlider").value,
@@ -4053,14 +4476,20 @@
           renderClusterDots();
         }
 
+        // Step 7: Orbital Transfer physics
+        if (orbitalTransferMode) {
+          updateOrbitalPhysics();
+        }
+
         render();
 
-        // Continue loop if any dots are moving OR dragging is active OR cluster mode active OR orbit mode with attractor
+        // Continue loop if any dots are moving OR dragging is active OR cluster mode active OR orbit mode with attractor OR orbital transfer mode
         if (
           dotVelocities.size > 0 ||
           isDragging ||
           (clusterMode && clusterRoundActive) ||
-          (orbitMode && orbitSunId !== null)
+          (orbitMode && orbitSunId !== null) ||
+          orbitalTransferMode
         ) {
           physicsAnimationId = requestAnimationFrame(physicsLoop);
         } else {
@@ -4761,8 +5190,8 @@
           }
         }
         if (e.key === "s" || e.key === "S") {
-          // Disable stop during golf/pinball mode
-          if (golfMode || pinballMode) return;
+          // Disable stop during game modes
+          if (golfMode || pinballMode || orbitalTransferMode) return;
 
           // Stop all dots (including orbiting ones)
           for (const [dotId, vel] of dotVelocities) {
@@ -4865,6 +5294,9 @@
           } else if (currentGame === "cluster") {
             clusterToggle.checked = false;
             clusterToggle.dispatchEvent(new Event("change"));
+          } else if (currentGame === "orbital") {
+            orbitalTransferMode = false;
+            resetOrbitalTransfer();
           }
         }
 
@@ -4893,6 +5325,9 @@
         } else if (gameName === "cluster") {
           clusterToggle.checked = true;
           clusterToggle.dispatchEvent(new Event("change"));
+        } else if (gameName === "orbital") {
+          orbitalTransferMode = true;
+          // Don't auto-start level, wait for button click
         }
 
         updateGameStats();
@@ -4936,6 +5371,30 @@
 
       document.getElementById("clusterActionBtn2").addEventListener("click", () => {
         startClusterRound();
+        updateGameStats();
+      });
+
+      // Orbital Transfer buttons
+      document.getElementById("orbitalStartBtn").addEventListener("click", () => {
+        startOrbitalTransferLevel(orbitalCurrentLevel);
+        document.getElementById("orbitalStartBtn").style.display = "none";
+        updateGameStats();
+      });
+
+      document.getElementById("orbitalNextBtn").addEventListener("click", () => {
+        orbitalCurrentLevel++;
+        if (orbitalCurrentLevel > ORBITAL_LEVELS.length) {
+          orbitalCurrentLevel = 1; // Loop back to level 1
+        }
+        startOrbitalTransferLevel(orbitalCurrentLevel);
+        document.getElementById("orbitalNextBtn").style.display = "none";
+        updateGameStats();
+      });
+
+      document.getElementById("orbitalResetBtn").addEventListener("click", () => {
+        startOrbitalTransferLevel(orbitalCurrentLevel);
+        document.getElementById("orbitalNextBtn").style.display = "none";
+        document.getElementById("orbitalStartBtn").style.display = "none";
         updateGameStats();
       });
 
@@ -5014,6 +5473,31 @@
           clusterActionBtn2.textContent = "Survive!";
         } else {
           clusterActionBtn2.textContent = clusterTimeElapsed > 0 ? "Try Again" : "Start";
+        }
+
+        // Orbital Transfer
+        document.getElementById("orbitalLevelNum").textContent = orbitalCurrentLevel;
+        document.getElementById("orbitalLaunchCount").textContent = orbitalLaunches;
+
+        const orbitalStatus = document.getElementById("orbitalStatus");
+        const orbitalStartBtn = document.getElementById("orbitalStartBtn");
+        const orbitalNextBtn = document.getElementById("orbitalNextBtn");
+
+        if (orbitalLevelComplete) {
+          orbitalStatus.textContent = "Level Complete!";
+          orbitalStatus.style.color = "#4ecdc4";
+          orbitalNextBtn.style.display = "block";
+          orbitalStartBtn.style.display = "none";
+        } else if (orbitalAttractors.size > 0) {
+          orbitalStatus.textContent = "Hold attractor to charge, release to launch";
+          orbitalStatus.style.color = "";
+          orbitalNextBtn.style.display = "none";
+          orbitalStartBtn.style.display = "none";
+        } else {
+          orbitalStatus.textContent = "Click Start Level to begin";
+          orbitalStatus.style.color = "";
+          orbitalNextBtn.style.display = "none";
+          orbitalStartBtn.style.display = "block";
         }
       }
 
