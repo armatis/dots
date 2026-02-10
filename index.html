@@ -1809,7 +1809,7 @@
       let orbitalLevelComplete = false;
       let orbitalCurrentLevel = 1;
       let orbitalChargingId = null;      // Which attractor is being charged
-      let orbitalFreeDots = new Set();   // Dots that have been launched and are flying free
+      let orbitalFreeDots = new Map();   // dotId → {sourceId, launchTime} (tracks source and when launched)
 
       // Orbital Transfer constants
       const ORBITAL_CHARGE_RATE = 0.03;      // How fast charge builds per frame
@@ -3399,23 +3399,29 @@
           const dy = satellite.y - attractor.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          // Calculate tangential velocity (perpendicular to radial direction)
-          // Current angular velocity scaled by charge
+          // Calculate tangential velocity matching visual orbital speed
+          // v = ω * r (angular velocity * radius)
           const angularVel = ORBITAL_BASE_ANGULAR_VEL * attractorData.chargeLevel;
-          const tangentialSpeed = angularVel * dist * 15; // Scale for good launch speed
+          const tangentialSpeed = angularVel * dist;
 
           // Tangent is perpendicular to radius (counter-clockwise)
           const tx = -dy / dist;
           const ty = dx / dist;
 
-          // Set velocity
+          // Set velocity - matches what player sees
           const vel = dotVelocities.get(satId) || { vx: 0, vy: 0 };
           vel.vx = tx * tangentialSpeed;
           vel.vy = ty * tangentialSpeed;
           dotVelocities.set(satId, vel);
 
-          // Mark as free-flying
-          orbitalFreeDots.add(satId);
+          // Keep friction disabled so satellite maintains speed
+          noFrictionDots.add(satId);
+
+          // Mark as free-flying with launch time for immunity period
+          orbitalFreeDots.set(satId, {
+            sourceId: attractorId,
+            launchTime: performance.now()
+          });
         }
 
         // Clear orbiting set
@@ -3429,16 +3435,26 @@
         if (!orbitalTransferMode || orbitalLevelComplete) return;
 
         const toCapture = []; // [{dotId, attractorId}]
+        const IMMUNITY_DURATION = 500; // ms before can be recaptured by source
+        const now = performance.now();
 
-        for (const freeDotId of orbitalFreeDots) {
+        for (const [freeDotId, launchData] of orbitalFreeDots) {
           const dot = dots.find(d => d.id === freeDotId);
           if (!dot) {
             orbitalFreeDots.delete(freeDotId);
             continue;
           }
 
-          // Check against all attractors
+          // Check immunity status
+          const sourceId = launchData ? launchData.sourceId : null;
+          const launchTime = launchData ? launchData.launchTime : 0;
+          const isImmune = sourceId !== null && (now - launchTime) < IMMUNITY_DURATION;
+
+          // Check against all attractors for capture
           for (const [attractorId, attractorData] of orbitalAttractors) {
+            // Skip source attractor during immunity period
+            if (isImmune && attractorId === sourceId) continue;
+
             const attractor = dots.find(d => d.id === attractorId);
             if (!attractor) continue;
 
